@@ -57,6 +57,7 @@ export default function Login() {
 
       // Redirect based on role stored in DB (fallback to applicant)
       const userRole = profile?.role || data.user.user_metadata?.role || "applicant";
+      setLoading(false);
       if (userRole === "admin")          navigate("/dashboard/admin");
       else if (userRole === "recruiter") navigate("/dashboard/recruiter");
       else if (userRole === "vendor")    navigate("/dashboard/vendor");
