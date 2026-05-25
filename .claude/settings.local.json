@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(del \"C:\\\\Users\\\\Manideep Chowdary\\\\Downloads\\\\cosmosnextgen-site-update-main\\\\src\\\\components\\\\Jobs.jsx\")",
-      "Bash(del \"C:\\\\Users\\\\Manideep Chowdary\\\\Downloads\\\\cosmosnextgen-site-update-main\\\\src\\\\components\\\\JobDetail.jsx\")"
+      "Bash(del \"C:\\\\Users\\\\Manideep Chowdary\\\\Downloads\\\\cosmosnextgen-site-update-main\\\\src\\\\components\\\\JobDetail.jsx\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh repo *)"
     ]
   }
 }
