@@ -1,8 +1,6 @@
 import React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
-const API = "https://cosmos-worker.echosparkvfx.workers.dev";
-
 const ROLES = {
   recruiter: { label: "Recruiter", icon: "🏢", color: "#13b8c8", desc: "Hiring managers & HR teams" },
   vendor:    { label: "Vendor",    icon: "🤝", color: "#7ddfbb", desc: "Staffing & consulting firms" },
@@ -18,33 +16,16 @@ export default function RequestAccess() {
   });
   const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState("");
-
-  const handleChange = (e) => {
-    setError("");
+  const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-  };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/access/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, role }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setError(data.error || "Submission failed. Please try again.");
-        setLoading(false);
-        return;
-      }
-      setSubmitted(true);
-    } catch {
-      setError("Network error. Please try again.");
+    setTimeout(() => {
       setLoading(false);
-    }
+      setSubmitted(true);
+    }, 1000);
   };
 
   return (

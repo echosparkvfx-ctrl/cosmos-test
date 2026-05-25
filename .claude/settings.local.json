@@ -8,7 +8,10 @@
       "Bash(git push *)",
       "Bash(gh repo *)",
       "Bash(git -C cosmos-worker status --short)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(git remote *)",
+      "Bash(git checkout *)",
+      "Bash(git rm *)"
     ]
   }
 }

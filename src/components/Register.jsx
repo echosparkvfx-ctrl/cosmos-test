@@ -1,8 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const API = "https://cosmos-worker.echosparkvfx.workers.dev";
-
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = React.useState({
@@ -19,32 +17,17 @@ export default function Register() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (form.password !== form.confirm) {
       setError("Passwords do not match.");
       return;
     }
     setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setError(data.error || "Registration failed.");
-        setLoading(false);
-        return;
-      }
-      localStorage.setItem("cosmos_token", data.token);
-      localStorage.setItem("cosmos_user", JSON.stringify(data.user));
-      navigate("/dashboard/applicant");
-    } catch {
-      setError("Network error. Please try again.");
+    setTimeout(() => {
       setLoading(false);
-    }
+      navigate("/dashboard/applicant");
+    }, 800);
   };
 
   return (
