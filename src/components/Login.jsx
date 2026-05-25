@@ -40,20 +40,23 @@ export default function Login() {
       }
 
       // Fetch role from profiles table
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .single();
 
-      if (profileError || !profile) {
-        setError("Could not fetch your profile. Please try again.");
-        setLoading(false);
-        return;
+      // If no profile yet (registered before profiles table existed), create one
+      if (!profile) {
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          full_name: data.user.user_metadata?.full_name || "",
+          role: data.user.user_metadata?.role || "applicant",
+        });
       }
 
-      // Redirect based on role stored in DB
-      const userRole = profile.role;
+      // Redirect based on role stored in DB (fallback to applicant)
+      const userRole = profile?.role || data.user.user_metadata?.role || "applicant";
       if (userRole === "admin")          navigate("/dashboard/admin");
       else if (userRole === "recruiter") navigate("/dashboard/recruiter");
       else if (userRole === "vendor")    navigate("/dashboard/vendor");
