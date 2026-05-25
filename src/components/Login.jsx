@@ -1,6 +1,8 @@
 import React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
+const API = "https://cosmos-worker.echosparkvfx.workers.dev";
+
 const DEMO_CREDENTIALS = {
   applicant: { email: "applicant@cosmos.com", password: "applicant123" },
   recruiter:  { email: "recruiter@cosmos.com",  password: "recruiter123"  },
@@ -30,22 +32,32 @@ export default function Login() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    const creds = DEMO_CREDENTIALS[activeRole];
-    if (form.email !== creds.email || form.password !== creds.password) {
-      setError("Invalid email or password. Please try again.");
-      return;
-    }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, password: form.password, role: activeRole }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || "Invalid email or password.");
+        setLoading(false);
+        return;
+      }
+      localStorage.setItem("cosmos_token", data.token);
+      localStorage.setItem("cosmos_user", JSON.stringify(data.user));
+      if (data.user.role === "admin")          navigate("/dashboard/admin");
+      else if (data.user.role === "recruiter") navigate("/dashboard/recruiter");
+      else if (data.user.role === "vendor")    navigate("/dashboard/vendor");
+      else                                     navigate("/dashboard/applicant");
+    } catch {
+      setError("Network error. Please try again.");
       setLoading(false);
-      if (activeRole === "admin")      navigate("/dashboard/admin");
-      else if (activeRole === "recruiter") navigate("/dashboard/recruiter");
-      else if (activeRole === "vendor")    navigate("/dashboard/vendor");
-      else navigate("/dashboard/applicant");
-    }, 1000);
+    }
   };
 
   return (

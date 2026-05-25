@@ -1,36 +1,57 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const INITIAL_REQUESTS = [
-  { id: 1, name: "Sarah Mitchell", company: "TalentBridge Inc.", email: "sarah@talentbridge.com", role: "recruiter", reason: "We are a mid-size staffing firm looking to source candidates through COSMOS.", submitted: "Today, 10:32 AM", status: "pending" },
-  { id: 2, name: "Raj Patel", company: "CloudStaff Solutions", email: "raj@cloudstaff.com", role: "vendor", reason: "We place IT contractors and want to connect with active job openings on your platform.", submitted: "Today, 8:15 AM", status: "pending" },
-  { id: 3, name: "Monica Lee", company: "HireForce LLC", email: "monica@hireforce.com", role: "recruiter", reason: "Growing HR team looking to manage applicant pipeline through COSMOS.", submitted: "Yesterday, 3:44 PM", status: "pending" },
-  { id: 4, name: "David Okafor", company: "NextGen Staffing", email: "david@nextgenstaffing.com", role: "vendor", reason: "Staffing agency specializing in healthcare and finance placements.", submitted: "2d ago", status: "approved" },
-  { id: 5, name: "Priya Nair", company: "SwiftHire Co.", email: "priya@swifthire.com", role: "recruiter", reason: "Tech recruitment agency focusing on engineering roles.", submitted: "3d ago", status: "rejected" },
-];
-
-const USERS = [
-  { name: "Recruiter Demo", email: "recruiter@cosmos.com", role: "recruiter", status: "active", joined: "Jan 2026" },
-  { name: "Vendor Demo",    email: "vendor@cosmos.com",    role: "vendor",    status: "active", joined: "Jan 2026" },
-  { name: "David Okafor",   email: "david@nextgenstaffing.com", role: "vendor", status: "active", joined: "May 2026" },
-];
-
+const API = "https://cosmos-worker.echosparkvfx.workers.dev";
 const roleColor  = { recruiter: "#13b8c8", vendor: "#7ddfbb" };
 const statusColor = { pending: "#f7b733", approved: "#7ddfbb", rejected: "#ef4444", active: "#7ddfbb" };
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [requests, setRequests] = React.useState(INITIAL_REQUESTS);
+  const [requests, setRequests] = React.useState([]);
+  const [users, setUsers] = React.useState([]);
   const [tab, setTab] = React.useState("stats");
-  const [selected, setSelected] = React.useState(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [approvedCreds, setApprovedCreds] = React.useState(null);
+
+  const token = localStorage.getItem("cosmos_token");
+  const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+
+  React.useEffect(() => {
+    fetch(`${API}/api/admin/requests`, { headers: authHeaders })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setRequests(d.requests); });
+    fetch(`${API}/api/admin/users`, { headers: authHeaders })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setUsers(d.users); });
+  }, []);
 
   const pending  = requests.filter((r) => r.status === "pending");
   const approved = requests.filter((r) => r.status === "approved");
   const rejected = requests.filter((r) => r.status === "rejected");
 
-  const approve = (id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
-  const reject  = (id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+  const approve = async (id) => {
+    const res = await fetch(`${API}/api/admin/approve`, {
+      method: "POST", headers: authHeaders,
+      body: JSON.stringify({ requestId: id }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
+      setApprovedCreds({ tempPassword: data.tempPassword });
+      fetch(`${API}/api/admin/users`, { headers: authHeaders })
+        .then((r) => r.json())
+        .then((d) => { if (d.success) setUsers(d.users); });
+    }
+  };
+
+  const reject = async (id) => {
+    const res = await fetch(`${API}/api/admin/reject`, {
+      method: "POST", headers: authHeaders,
+      body: JSON.stringify({ requestId: id }),
+    });
+    const data = await res.json();
+    if (data.success) setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+  };
 
   return (
     <main className="adminPage">
@@ -59,6 +80,21 @@ export default function AdminDashboard() {
           </div>
         </div>
       </header>
+
+      {approvedCreds && (
+        <div className="modalOverlay" onClick={() => setApprovedCreds(null)}>
+          <div className="modalBox" onClick={(e) => e.stopPropagation()}>
+            <div className="modalIcon">✅</div>
+            <h3 className="modalTitle">User Approved!</h3>
+            <p className="modalDesc">Share these temporary credentials with the user. They will be asked to change their password on first login.</p>
+            <div className="modalCreds">
+              <span className="modalCredsLabel">Temporary Password</span>
+              <code className="modalCredsCode">{approvedCreds.tempPassword}</code>
+            </div>
+            <button className="approveBtn" style={{ width: "100%" }} onClick={() => setApprovedCreds(null)}>Got it</button>
+          </div>
+        </div>
+      )}
 
       <div className="adminBody">
         {/* ── Sidebar ── */}
@@ -100,9 +136,9 @@ export default function AdminDashboard() {
               <div className="statsGrid">
                 {[
                   { label: "Pending Requests",  value: pending.length,  icon: "⏳", color: "#f7b733", action: () => setTab("requests") },
-                  { label: "Approved Accounts", value: approved.length + USERS.length, icon: "✅", color: "#7ddfbb", action: () => setTab("users") },
-                  { label: "Total Recruiters",  value: USERS.filter(u => u.role === "recruiter").length + approved.filter(r => r.role === "recruiter").length, icon: "🏢", color: "#13b8c8", action: () => setTab("users") },
-                  { label: "Total Vendors",     value: USERS.filter(u => u.role === "vendor").length + approved.filter(r => r.role === "vendor").length, icon: "🤝", color: "#ff6b4a", action: () => setTab("users") },
+                  { label: "Active Users",      value: users.length,    icon: "✅", color: "#7ddfbb", action: () => setTab("users") },
+                  { label: "Total Recruiters",  value: users.filter(u => u.role === "recruiter").length, icon: "🏢", color: "#13b8c8", action: () => setTab("users") },
+                  { label: "Total Vendors",     value: users.filter(u => u.role === "vendor").length,    icon: "🤝", color: "#ff6b4a", action: () => setTab("users") },
                 ].map((s) => (
                   <button className="statCard" key={s.label} style={{ "--cc": s.color }} onClick={s.action}>
                     <span className="statIcon">{s.icon}</span>
@@ -121,10 +157,10 @@ export default function AdminDashboard() {
                 <div className="activityList">
                   {requests.slice(0, 5).map((r) => (
                     <div className="activityItem" key={r.id}>
-                      <div className="activityAvatar" style={{ "--rc": roleColor[r.role] }}>{r.name.charAt(0)}</div>
+                      <div className="activityAvatar" style={{ "--rc": roleColor[r.role] || "#f7b733" }}>{r.name.charAt(0)}</div>
                       <div className="activityInfo">
                         <span className="activityName">{r.name} <span className="activityCompany">from {r.company}</span></span>
-                        <span className="activityTime">requested {r.role} access · {r.submitted}</span>
+                        <span className="activityTime">requested {r.role} access · {r.submitted_at}</span>
                       </div>
                       <span className="statusPill" style={{ "--sc": statusColor[r.status] }}>{r.status}</span>
                     </div>
@@ -147,7 +183,7 @@ export default function AdminDashboard() {
                       <div className="requestCard" key={r.id}>
                         <div className="requestTop">
                           <div className="requestInfo">
-                            <div className="requestAvatar" style={{ "--rc": roleColor[r.role] }}>{r.name.charAt(0)}</div>
+                            <div className="requestAvatar" style={{ "--rc": roleColor[r.role] || "#f7b733" }}>{r.name.charAt(0)}</div>
                             <div>
                               <p className="requestName">{r.name}</p>
                               <p className="requestCompany">{r.company}</p>
@@ -155,8 +191,8 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <div className="requestMeta">
-                            <span className="rolePill" style={{ "--rc": roleColor[r.role] }}>{r.role}</span>
-                            <span className="requestTime">{r.submitted}</span>
+                            <span className="rolePill" style={{ "--rc": roleColor[r.role] || "#f7b733" }}>{r.role}</span>
+                            <span className="requestTime">{r.submitted_at}</span>
                           </div>
                         </div>
                         <p className="requestReason">"{r.reason}"</p>
@@ -178,14 +214,14 @@ export default function AdminDashboard() {
                       <div className="requestCard requestCardMuted" key={r.id}>
                         <div className="requestTop">
                           <div className="requestInfo">
-                            <div className="requestAvatar" style={{ "--rc": roleColor[r.role] }}>{r.name.charAt(0)}</div>
+                            <div className="requestAvatar" style={{ "--rc": roleColor[r.role] || "#7ddfbb" }}>{r.name.charAt(0)}</div>
                             <div>
                               <p className="requestName">{r.name}</p>
                               <p className="requestCompany">{r.company} · {r.email}</p>
                             </div>
                           </div>
                           <div className="requestMeta">
-                            <span className="rolePill" style={{ "--rc": roleColor[r.role] }}>{r.role}</span>
+                            <span className="rolePill" style={{ "--rc": roleColor[r.role] || "#7ddfbb" }}>{r.role}</span>
                             <span className="statusPill" style={{ "--sc": "#7ddfbb" }}>Approved</span>
                           </div>
                         </div>
@@ -210,7 +246,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <div className="requestMeta">
-                            <span className="rolePill" style={{ "--rc": roleColor[r.role] }}>{r.role}</span>
+                            <span className="rolePill" style={{ "--rc": roleColor[r.role] || "#ef4444" }}>{r.role}</span>
                             <span className="statusPill" style={{ "--sc": "#ef4444" }}>Rejected</span>
                           </div>
                         </div>
@@ -243,13 +279,13 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {USERS.map((u) => (
+                    {users.map((u) => (
                       <tr key={u.email}>
                         <td className="tdName">{u.name}</td>
                         <td className="tdMuted">{u.email}</td>
-                        <td><span className="rolePill" style={{ "--rc": roleColor[u.role] }}>{u.role}</span></td>
-                        <td><span className="statusPill" style={{ "--sc": statusColor[u.status] }}>{u.status}</span></td>
-                        <td className="tdMuted">{u.joined}</td>
+                        <td><span className="rolePill" style={{ "--rc": roleColor[u.role] || "#f7b733" }}>{u.role}</span></td>
+                        <td><span className="statusPill" style={{ "--sc": "#7ddfbb" }}>active</span></td>
+                        <td className="tdMuted">{u.created_at ? u.created_at.slice(0, 10) : "—"}</td>
                         <td><button className="tableActionBtn">Revoke</button></td>
                       </tr>
                     ))}
@@ -855,6 +891,64 @@ export default function AdminDashboard() {
           padding: 60px 20px;
           color: rgba(245,245,245,0.35);
           font-size: 15px;
+        }
+
+        /* Modal */
+        .modalOverlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 200;
+          padding: 20px;
+        }
+
+        .modalBox {
+          background: rgba(15,19,32,0.99);
+          border: 1px solid rgba(125,223,187,0.25);
+          border-radius: 18px;
+          padding: 32px 28px;
+          max-width: 380px;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          text-align: center;
+          box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        }
+
+        .modalIcon { font-size: 48px; }
+        .modalTitle { margin: 0; font-size: 20px; font-weight: 900; color: #f5f5f5; }
+        .modalDesc { margin: 0; font-size: 13px; color: rgba(245,245,245,0.5); line-height: 1.6; }
+
+        .modalCreds {
+          width: 100%;
+          background: rgba(255,255,255,0.04);
+          border: 1px dashed rgba(125,223,187,0.3);
+          border-radius: 10px;
+          padding: 14px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .modalCredsLabel {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+          color: rgba(245,245,245,0.35);
+        }
+
+        .modalCredsCode {
+          font-size: 16px;
+          font-family: monospace;
+          color: #7ddfbb;
+          font-weight: 700;
+          letter-spacing: 0.04em;
         }
 
         @media (max-width: 860px) {

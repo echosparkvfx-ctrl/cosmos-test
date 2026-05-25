@@ -1,7 +1,10 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+const API = "https://cosmos-worker.echosparkvfx.workers.dev";
 
 export default function Register() {
+  const navigate = useNavigate();
   const [form, setForm] = React.useState({
     name: "",
     email: "",
@@ -9,14 +12,39 @@ export default function Register() {
     confirm: "",
   });
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
+    setError("");
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password !== form.confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
     setLoading(true);
-    setTimeout(() => setLoading(false), 1500);
+    try {
+      const res = await fetch(`${API}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || "Registration failed.");
+        setLoading(false);
+        return;
+      }
+      localStorage.setItem("cosmos_token", data.token);
+      localStorage.setItem("cosmos_user", JSON.stringify(data.user));
+      navigate("/dashboard/applicant");
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -119,6 +147,8 @@ export default function Register() {
               onChange={handleChange}
             />
           </div>
+
+          {error && <div className="authError">{error}</div>}
 
           <button type="submit" className="authSubmit" disabled={loading}>
             {loading ? "Creating account…" : "Create account"}
@@ -339,6 +369,16 @@ export default function Register() {
         }
 
         .authSubmit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .authError {
+          padding: 10px 14px;
+          border-radius: 10px;
+          background: rgba(239,68,68,0.1);
+          border: 1px solid rgba(239,68,68,0.25);
+          color: #f87171;
+          font-size: 13px;
+          font-weight: 600;
+        }
 
         /* ── Sign in link ── */
         .authSwitch {

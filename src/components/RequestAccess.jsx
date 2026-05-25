@@ -1,6 +1,8 @@
 import React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
+const API = "https://cosmos-worker.echosparkvfx.workers.dev";
+
 const ROLES = {
   recruiter: { label: "Recruiter", icon: "🏢", color: "#13b8c8", desc: "Hiring managers & HR teams" },
   vendor:    { label: "Vendor",    icon: "🤝", color: "#7ddfbb", desc: "Staffing & consulting firms" },
@@ -16,17 +18,33 @@ export default function RequestAccess() {
   });
   const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
+    setError("");
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch(`${API}/api/access/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, role }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || "Submission failed. Please try again.");
+        setLoading(false);
+        return;
+      }
       setSubmitted(true);
-    }, 1200);
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -93,6 +111,8 @@ export default function RequestAccess() {
                 <label className="fieldLabel">Why do you need access?</label>
                 <textarea name="reason" required className="fieldTextarea" rows={3} placeholder={`Briefly describe your role and how you plan to use COSMOS as a ${current.label}...`} value={form.reason} onChange={handleChange} />
               </div>
+
+              {error && <div className="authError">{error}</div>}
 
               <button type="submit" className="authSubmit" disabled={loading} style={{ "--btn-color": current.color }}>
                 {loading ? "Submitting…" : "Submit Request"}
@@ -270,6 +290,16 @@ export default function RequestAccess() {
         }
 
         .authSubmit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .authError {
+          padding: 10px 14px;
+          border-radius: 10px;
+          background: rgba(239,68,68,0.1);
+          border: 1px solid rgba(239,68,68,0.25);
+          color: #f87171;
+          font-size: 13px;
+          font-weight: 600;
+        }
 
         .authSwitch {
           margin: 0;

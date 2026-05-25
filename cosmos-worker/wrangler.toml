@@ -1,0 +1,8 @@
+name = "cosmos-worker"
+main = "src/index.js"
+compatibility_date = "2026-05-25"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cosmos-db"
+database_id = "4a1db267-ead3-4455-9940-a512c6a171ee"
