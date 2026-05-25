@@ -29,7 +29,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       });
@@ -38,10 +38,27 @@ export default function Login() {
         setLoading(false);
         return;
       }
-      if (activeRole === "admin")          navigate("/dashboard/admin");
-      else if (activeRole === "recruiter") navigate("/dashboard/recruiter");
-      else if (activeRole === "vendor")    navigate("/dashboard/vendor");
-      else                                 navigate("/dashboard/applicant");
+
+      // Fetch role from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        setError("Could not fetch your profile. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Redirect based on role stored in DB
+      const userRole = profile.role;
+      if (userRole === "admin")          navigate("/dashboard/admin");
+      else if (userRole === "recruiter") navigate("/dashboard/recruiter");
+      else if (userRole === "vendor")    navigate("/dashboard/vendor");
+      else                               navigate("/dashboard/applicant");
+
     } catch (err) {
       setError("Something went wrong. Please try again.");
       setLoading(false);

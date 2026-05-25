@@ -25,7 +25,7 @@ export default function Register() {
         email: form.email,
         password: form.password,
         options: {
-          data: { full_name: form.name },
+          data: { full_name: form.name, role: "applicant" },
         },
       });
       if (authError) {
