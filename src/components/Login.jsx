@@ -719,33 +719,61 @@ export default function Login() {
 
         /* ── Responsive ── */
         @media (max-width: 960px) {
-          .heroPanel { display: none; }
+          .loginRoot { flex-direction: column; }
+
+          .heroPanel {
+            display: flex;
+            flex: none;
+            width: 100%;
+            padding: 48px 24px 40px;
+            min-height: auto;
+            align-items: flex-start;
+          }
+          .heroContent {
+            max-width: 600px;
+            margin: 0 auto;
+            gap: 20px;
+          }
+          /* hide heavy elements on tablet/mobile hero */
+          .mockupWrap { display: none; }
+          .heroStats { width: 100%; }
+          .heroStat { padding: 12px 20px; }
+
           .formPanel {
             width: 100%;
+            flex: none;
             border-left: none;
-            padding: 48px 32px;
-            background:
-              radial-gradient(ellipse 700px 500px at 80% -10%, rgba(255,107,74,0.14) 0%, transparent 60%),
-              radial-gradient(ellipse 600px 400px at -10% 90%, rgba(19,184,200,0.1) 0%, transparent 55%),
-              #060914;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding: 40px 24px 48px;
+            background: #080b1c;
+            align-items: flex-start;
           }
           .formPanel::before { display: none; }
-          .formCard { max-width: 440px; margin: 0 auto; }
-          .mobileLogo { display: flex; }
+          .formCard { max-width: 520px; margin: 0 auto; }
+          .mobileLogo { display: none; }
         }
 
         @media (max-width: 600px) {
-          .formPanel { padding: 36px 20px; }
+          .heroPanel { padding: 36px 20px 32px; }
+          .heroHeadline { font-size: 28px; }
+          .heroSub { font-size: 13.5px; }
+          .trustRow { flex-wrap: wrap; }
+          .heroStats { width: fit-content; }
+          .heroStat { padding: 10px 16px; }
+          .heroStatN { font-size: 18px; }
+
+          .formPanel { padding: 32px 20px 40px; }
           .roleTabs { gap: 2px; }
           .roleTab { font-size: 11px; gap: 3px; padding: 0 4px; }
           .formTitle { font-size: 24px; }
-          .fGroup input { height: 50px; font-size: 16px; } /* prevent iOS zoom */
+          .fGroup input { height: 50px; font-size: 16px; }
           .submitBtn { height: 52px; font-size: 15px; }
           .googleBtn { height: 50px; font-size: 15px; }
         }
 
         @media (max-width: 380px) {
-          .formPanel { padding: 28px 16px; }
+          .heroPanel { padding: 28px 16px 24px; }
+          .formPanel { padding: 28px 16px 36px; }
           .roleTabs { flex-wrap: wrap; }
           .roleTab { flex: 0 0 calc(50% - 2px); height: 36px; font-size: 11px; }
           .formTitle { font-size: 22px; }

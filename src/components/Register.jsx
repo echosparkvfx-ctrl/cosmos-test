@@ -400,32 +400,57 @@ export default function Register() {
 
         /* responsive */
         @media (max-width: 960px) {
-          .regHero { display: none; }
+          .regRoot { flex-direction: column; }
+
+          .regHero {
+            display: flex;
+            flex: none;
+            width: 100%;
+            padding: 48px 24px 40px;
+            min-height: auto;
+            border-right: none;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            align-items: flex-start;
+          }
+          .heroContent {
+            max-width: 600px;
+            margin: 0 auto;
+            gap: 20px;
+          }
+          /* hide profile card on mobile to save space */
+          .profileCard { display: none; }
+          .benefitList { gap: 12px; }
+
           .regFormPanel {
-            width: 100%; border-left: none;
-            padding: 48px 32px;
-            background:
-              radial-gradient(ellipse 700px 400px at 80% -10%, rgba(247,183,51,0.12) 0%, transparent 60%),
-              radial-gradient(ellipse 500px 400px at -10% 90%, rgba(255,107,74,0.1) 0%, transparent 55%),
-              #060914;
+            width: 100%; flex: none;
+            border-left: none;
+            padding: 40px 24px 48px;
+            background: #080b1c;
+            align-items: flex-start;
           }
           .regFormPanel::before { display: none; }
-          .regFormCard { max-width: 460px; margin: 0 auto; }
-          .mobileLogo { display: flex; }
+          .regFormCard { max-width: 520px; margin: 0 auto; }
+          .mobileLogo { display: none; }
         }
 
         @media (max-width: 600px) {
-          .regFormPanel { padding: 36px 20px; }
+          .regHero { padding: 36px 20px 32px; }
+          .heroTitle { font-size: 26px; }
+          .heroSub { font-size: 13.5px; }
+          .benefitItem { gap: 10px; }
+          .benefitIcon { width: 34px; height: 34px; font-size: 16px; }
+
+          .regFormPanel { padding: 32px 20px 40px; }
           .fRow { grid-template-columns: 1fr; }
           .formTitle { font-size: 22px; }
-          .fGroup input { height: 50px; font-size: 16px; } /* prevent iOS zoom */
+          .fGroup input { height: 50px; font-size: 16px; }
           .submitBtn { height: 52px; font-size: 15px; }
           .googleBtn { height: 50px; font-size: 15px; }
-          .benefitList { gap: 10px; }
         }
 
         @media (max-width: 380px) {
-          .regFormPanel { padding: 28px 16px; }
+          .regHero { padding: 28px 16px 24px; }
+          .regFormPanel { padding: 28px 16px 36px; }
           .formTitle { font-size: 20px; }
           .formBadge { font-size: 11px; }
           .termsNote { font-size: 10.5px; }
