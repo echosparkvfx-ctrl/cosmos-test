@@ -403,6 +403,7 @@ export default function Register() {
           .regHero { display: none; }
           .regFormPanel {
             width: 100%; border-left: none;
+            padding: 48px 32px;
             background:
               radial-gradient(ellipse 700px 400px at 80% -10%, rgba(247,183,51,0.12) 0%, transparent 60%),
               radial-gradient(ellipse 500px 400px at -10% 90%, rgba(255,107,74,0.1) 0%, transparent 55%),
@@ -413,9 +414,21 @@ export default function Register() {
           .mobileLogo { display: flex; }
         }
 
-        @media (max-width: 560px) {
+        @media (max-width: 600px) {
           .regFormPanel { padding: 36px 20px; }
           .fRow { grid-template-columns: 1fr; }
+          .formTitle { font-size: 22px; }
+          .fGroup input { height: 50px; font-size: 16px; } /* prevent iOS zoom */
+          .submitBtn { height: 52px; font-size: 15px; }
+          .googleBtn { height: 50px; font-size: 15px; }
+          .benefitList { gap: 10px; }
+        }
+
+        @media (max-width: 380px) {
+          .regFormPanel { padding: 28px 16px; }
+          .formTitle { font-size: 20px; }
+          .formBadge { font-size: 11px; }
+          .termsNote { font-size: 10.5px; }
         }
       `}</style>
     </div>

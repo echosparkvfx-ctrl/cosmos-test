@@ -723,19 +723,34 @@ export default function Login() {
           .formPanel {
             width: 100%;
             border-left: none;
+            padding: 48px 32px;
             background:
               radial-gradient(ellipse 700px 500px at 80% -10%, rgba(255,107,74,0.14) 0%, transparent 60%),
               radial-gradient(ellipse 600px 400px at -10% 90%, rgba(19,184,200,0.1) 0%, transparent 55%),
               #060914;
           }
           .formPanel::before { display: none; }
-          .formCard { max-width: 420px; margin: 0 auto; }
+          .formCard { max-width: 440px; margin: 0 auto; }
           .mobileLogo { display: flex; }
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 600px) {
           .formPanel { padding: 36px 20px; }
-          .roleTab { font-size: 11px; gap: 3px; }
+          .roleTabs { gap: 2px; }
+          .roleTab { font-size: 11px; gap: 3px; padding: 0 4px; }
+          .formTitle { font-size: 24px; }
+          .fGroup input { height: 50px; font-size: 16px; } /* prevent iOS zoom */
+          .submitBtn { height: 52px; font-size: 15px; }
+          .googleBtn { height: 50px; font-size: 15px; }
+        }
+
+        @media (max-width: 380px) {
+          .formPanel { padding: 28px 16px; }
+          .roleTabs { flex-wrap: wrap; }
+          .roleTab { flex: 0 0 calc(50% - 2px); height: 36px; font-size: 11px; }
+          .formTitle { font-size: 22px; }
+          .demoBox { padding: 10px 12px; }
+          .demoCreds code { font-size: 11px; }
         }
       `}</style>
     </div>
