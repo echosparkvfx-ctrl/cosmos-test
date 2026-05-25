@@ -417,7 +417,8 @@ export default function Register() {
             margin: 0 auto;
             gap: 20px;
           }
-          /* hide profile card on mobile to save space */
+          /* hide logo and profile card on mobile */
+          .heroBrand { display: none; }
           .profileCard { display: none; }
           .benefitList { gap: 12px; }
 

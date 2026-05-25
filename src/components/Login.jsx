@@ -734,7 +734,8 @@ export default function Login() {
             margin: 0 auto;
             gap: 20px;
           }
-          /* hide heavy elements on tablet/mobile hero */
+          /* hide logo and heavy elements on mobile hero */
+          .heroBrand { display: none; }
           .mockupWrap { display: none; }
           .heroStats { width: 100%; }
           .heroStat { padding: 12px 20px; }
