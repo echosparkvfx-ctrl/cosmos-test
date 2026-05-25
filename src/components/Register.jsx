@@ -164,29 +164,43 @@ export default function Register() {
           align-items: center;
           justify-content: center;
           padding: 60px 56px;
-          background: linear-gradient(140deg, #07091e 0%, #0a0d24 60%, #060914 100%);
+          background: #07091e;
           border-right: 1px solid rgba(255,255,255,0.06);
         }
 
-        .orb { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; }
-        .orb1 { width:500px;height:500px;top:-100px;left:-60px;
-          background:radial-gradient(circle,rgba(247,183,51,0.18) 0%,transparent 70%);
-          animation: floatOrb 9s ease-in-out infinite; }
-        .orb2 { width:400px;height:400px;bottom:-80px;right:-40px;
-          background:radial-gradient(circle,rgba(255,107,74,0.16) 0%,transparent 70%);
-          animation: floatOrb 12s ease-in-out infinite reverse; }
-        .orb3 { width:300px;height:300px;top:60%;left:60%;
-          background:radial-gradient(circle,rgba(19,184,200,0.1) 0%,transparent 70%);
-          animation: floatOrb 15s ease-in-out infinite; }
+        /* photo background */
+        .regHero::after {
+          content: "";
+          position: absolute; inset: 0;
+          background-image: url('/images/cosmos-hero-visual.webp');
+          background-size: cover;
+          background-position: center;
+          opacity: 0.15;
+          pointer-events: none;
+        }
+
+        /* dark gradient overlay */
+        .regHero::before {
+          content: "";
+          position: absolute; inset: 0;
+          background:
+            linear-gradient(140deg, rgba(7,9,30,0.93) 0%, rgba(10,13,36,0.86) 60%, rgba(6,9,20,0.91) 100%),
+            radial-gradient(ellipse 600px 500px at 20% 10%, rgba(247,183,51,0.18) 0%, transparent 60%),
+            radial-gradient(ellipse 500px 400px at 90% 90%, rgba(255,107,74,0.14) 0%, transparent 55%);
+          z-index: 1;
+          pointer-events: none;
+        }
+
+        .orb { display: none; }
 
         @keyframes floatOrb {
-          0%,100% { transform: translateY(0) scale(1); }
-          50%      { transform: translateY(-28px) scale(1.04); }
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-28px); }
         }
 
         .dotGrid {
-          position: absolute; inset: 0;
-          background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
+          position: absolute; inset: 0; z-index: 2;
+          background-image: radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px);
           background-size: 32px 32px;
           mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 20%, transparent 80%);
           pointer-events: none;

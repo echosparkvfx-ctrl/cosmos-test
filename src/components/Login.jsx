@@ -278,54 +278,56 @@ export default function Login() {
           align-items: center;
           justify-content: center;
           padding: 60px 56px;
-          background: linear-gradient(135deg, #07091e 0%, #0a0d24 60%, #060914 100%);
+          background: #07091e;
         }
 
-        /* animated glowing orbs */
-        .orb {
+        /* photo background */
+        .heroPanel::after {
+          content: "";
           position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
+          inset: 0;
+          background-image: url('/images/cosmos-talent-visual.webp');
+          background-size: cover;
+          background-position: center;
+          opacity: 0.18;
           pointer-events: none;
         }
-        .orb1 {
-          width: 500px; height: 500px;
-          top: -100px; right: -80px;
-          background: radial-gradient(circle, rgba(255,107,74,0.22) 0%, transparent 70%);
-          animation: floatOrb 8s ease-in-out infinite;
-        }
-        .orb2 {
-          width: 400px; height: 400px;
-          bottom: -80px; left: -60px;
-          background: radial-gradient(circle, rgba(19,184,200,0.18) 0%, transparent 70%);
-          animation: floatOrb 11s ease-in-out infinite reverse;
-        }
-        .orb3 {
-          width: 300px; height: 300px;
-          top: 50%; left: 50%;
-          transform: translate(-50%,-50%);
-          background: radial-gradient(circle, rgba(247,183,51,0.07) 0%, transparent 70%);
-          animation: floatOrb 14s ease-in-out infinite;
-        }
 
-        @keyframes floatOrb {
-          0%,100% { transform: translateY(0) scale(1); }
-          50%      { transform: translateY(-30px) scale(1.05); }
+        /* dark overlay on top of photo */
+        .heroPanel::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(135deg, rgba(7,9,30,0.92) 0%, rgba(10,13,36,0.85) 60%, rgba(6,9,20,0.9) 100%),
+            radial-gradient(ellipse 600px 500px at 80% 10%, rgba(255,107,74,0.2) 0%, transparent 60%),
+            radial-gradient(ellipse 500px 400px at 10% 90%, rgba(19,184,200,0.15) 0%, transparent 55%);
+          z-index: 1;
+          pointer-events: none;
         }
 
         /* dot grid */
         .dotGrid {
           position: absolute;
           inset: 0;
-          background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+          z-index: 2;
+          background-image: radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px);
           background-size: 32px 32px;
-          mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 30%, transparent 100%);
+          mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 20%, transparent 80%);
           pointer-events: none;
+        }
+
+        /* remove old orbs — not needed with photo */
+        .orb { display: none; }
+
+        @keyframes floatOrb {
+          0%,100% { transform: translateY(0) scale(1); }
+          50%      { transform: translateY(-30px) scale(1.05); }
         }
 
         .heroContent {
           position: relative;
-          z-index: 1;
+          z-index: 3;
           max-width: 540px;
           width: 100%;
           display: flex;
