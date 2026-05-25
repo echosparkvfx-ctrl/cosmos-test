@@ -1,22 +1,44 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
 export default function Register() {
   const navigate = useNavigate();
-  const [form, setForm] = React.useState({ name: "", email: "", password: "", confirm: "" });
-  const [loading, setLoading] = React.useState(false);
-  const [error,   setError]   = React.useState("");
+  const [form,      setForm]      = React.useState({ name: "", email: "", password: "", confirm: "" });
+  const [loading,   setLoading]   = React.useState(false);
+  const [error,     setError]     = React.useState("");
+  const [submitted, setSubmitted] = React.useState(false);
 
   const handleChange = (e) => {
     setError("");
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirm) { setError("Passwords do not match."); return; }
+    if (form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); navigate("/dashboard/applicant"); }, 800);
+    setError("");
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: { full_name: form.name },
+        },
+      });
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
+      setSubmitted(true);
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,6 +99,21 @@ export default function Register() {
       {/* ═══════════ RIGHT FORM ═══════════ */}
       <div className="regFormPanel">
         <div className="regFormCard">
+
+          {/* ── Success state ── */}
+          {submitted ? (
+            <div className="successBlock">
+              <div className="successIcon">✅</div>
+              <h2 className="successTitle">Check your email!</h2>
+              <p className="successDesc">
+                We sent a confirmation link to <strong>{form.email}</strong>.
+                Click it to activate your account, then sign in.
+              </p>
+              <Link to="/login/applicant" className="submitBtn" style={{ display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }}>
+                Go to Login →
+              </Link>
+            </div>
+          ) : (<>
 
           {/* mobile logo */}
           <a href="/" className="mobileLogo">
@@ -145,6 +182,7 @@ export default function Register() {
           <p className="termsNote">
             By creating an account you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
           </p>
+          </>)}
         </div>
       </div>
 
@@ -397,6 +435,22 @@ export default function Register() {
           color: rgba(245,245,245,0.25); line-height: 1.6;
         }
         .termsNote a { color: rgba(245,245,245,0.4); text-decoration: underline; }
+
+        /* success block */
+        .successBlock {
+          display: flex; flex-direction: column;
+          align-items: center; gap: 16px;
+          text-align: center; padding: 24px 0;
+        }
+        .successIcon { font-size: 52px; }
+        .successTitle {
+          margin: 0; font-size: 22px; font-weight: 900; color: #f5f5f5;
+        }
+        .successDesc {
+          margin: 0; font-size: 14px; color: rgba(245,245,245,0.5);
+          line-height: 1.65;
+        }
+        .successDesc strong { color: rgba(245,245,245,0.8); }
 
         /* responsive */
         @media (max-width: 960px) {

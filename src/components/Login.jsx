@@ -1,12 +1,6 @@
 import React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-
-const DEMO_CREDENTIALS = {
-  applicant: { email: "applicant@cosmos.com", password: "applicant123" },
-  recruiter:  { email: "recruiter@cosmos.com",  password: "recruiter123" },
-  vendor:     { email: "vendor@cosmos.com",     password: "vendor123"    },
-  admin:      { email: "admin@cosmos.com",      password: "admin123"     },
-};
+import { supabase } from "../lib/supabase";
 
 const ROLES = {
   applicant: { label: "Applicant", icon: "👤", desc: "Job seekers & candidates",   accent: "#ff6b4a" },
@@ -30,22 +24,28 @@ export default function Login() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    const creds = DEMO_CREDENTIALS[activeRole];
-    if (form.email !== creds.email || form.password !== creds.password) {
-      setError("Invalid email or password. Please try again.");
-      return;
-    }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
       if (activeRole === "admin")          navigate("/dashboard/admin");
       else if (activeRole === "recruiter") navigate("/dashboard/recruiter");
       else if (activeRole === "vendor")    navigate("/dashboard/vendor");
       else                                 navigate("/dashboard/applicant");
-    }, 800);
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -239,15 +239,6 @@ export default function Login() {
                 : `Sign in as ${current.label}`}
             </button>
           </form>
-
-          {/* demo hint */}
-          <div className="demoBox">
-            <span className="demoTitle">Demo credentials</span>
-            <div className="demoCreds">
-              <code>{DEMO_CREDENTIALS[activeRole].email}</code>
-              <code>{DEMO_CREDENTIALS[activeRole].password}</code>
-            </div>
-          </div>
 
           {/* footer link */}
           {activeRole === "applicant" && (
