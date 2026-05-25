@@ -1,57 +1,35 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const API = "https://cosmos-worker.echosparkvfx.workers.dev";
+const INITIAL_REQUESTS = [
+  { id: 1, name: "Sarah Mitchell", company: "TalentBridge Inc.", email: "sarah@talentbridge.com", role: "recruiter", reason: "We are a mid-size staffing firm looking to source candidates through COSMOS.", submitted_at: "Today, 10:32 AM", status: "pending" },
+  { id: 2, name: "Raj Patel", company: "CloudStaff Solutions", email: "raj@cloudstaff.com", role: "vendor", reason: "We place IT contractors and want to connect with active job openings on your platform.", submitted_at: "Today, 8:15 AM", status: "pending" },
+  { id: 3, name: "Monica Lee", company: "HireForce LLC", email: "monica@hireforce.com", role: "recruiter", reason: "Growing HR team looking to manage applicant pipeline through COSMOS.", submitted_at: "Yesterday, 3:44 PM", status: "pending" },
+  { id: 4, name: "David Okafor", company: "NextGen Staffing", email: "david@nextgenstaffing.com", role: "vendor", reason: "Staffing agency specializing in healthcare and finance placements.", submitted_at: "2d ago", status: "approved" },
+  { id: 5, name: "Priya Nair", company: "SwiftHire Co.", email: "priya@swifthire.com", role: "recruiter", reason: "Tech recruitment agency focusing on engineering roles.", submitted_at: "3d ago", status: "rejected" },
+];
+
+const USERS = [
+  { name: "Recruiter Demo", email: "recruiter@cosmos.com", role: "recruiter", created_at: "2026-01-01" },
+  { name: "Vendor Demo",    email: "vendor@cosmos.com",    role: "vendor",    created_at: "2026-01-01" },
+];
+
 const roleColor  = { recruiter: "#13b8c8", vendor: "#7ddfbb" };
 const statusColor = { pending: "#f7b733", approved: "#7ddfbb", rejected: "#ef4444", active: "#7ddfbb" };
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [requests, setRequests] = React.useState([]);
-  const [users, setUsers] = React.useState([]);
+  const [requests, setRequests] = React.useState(INITIAL_REQUESTS);
+  const [users] = React.useState(USERS);
   const [tab, setTab] = React.useState("stats");
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const [approvedCreds, setApprovedCreds] = React.useState(null);
-
-  const token = localStorage.getItem("cosmos_token");
-  const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
-
-  React.useEffect(() => {
-    fetch(`${API}/api/admin/requests`, { headers: authHeaders })
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setRequests(d.requests); });
-    fetch(`${API}/api/admin/users`, { headers: authHeaders })
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setUsers(d.users); });
-  }, []);
 
   const pending  = requests.filter((r) => r.status === "pending");
   const approved = requests.filter((r) => r.status === "approved");
   const rejected = requests.filter((r) => r.status === "rejected");
 
-  const approve = async (id) => {
-    const res = await fetch(`${API}/api/admin/approve`, {
-      method: "POST", headers: authHeaders,
-      body: JSON.stringify({ requestId: id }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
-      setApprovedCreds({ tempPassword: data.tempPassword });
-      fetch(`${API}/api/admin/users`, { headers: authHeaders })
-        .then((r) => r.json())
-        .then((d) => { if (d.success) setUsers(d.users); });
-    }
-  };
-
-  const reject = async (id) => {
-    const res = await fetch(`${API}/api/admin/reject`, {
-      method: "POST", headers: authHeaders,
-      body: JSON.stringify({ requestId: id }),
-    });
-    const data = await res.json();
-    if (data.success) setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
-  };
+  const approve = (id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
+  const reject  = (id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
 
   return (
     <main className="adminPage">
@@ -81,22 +59,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {approvedCreds && (
-        <div className="modalOverlay" onClick={() => setApprovedCreds(null)}>
-          <div className="modalBox" onClick={(e) => e.stopPropagation()}>
-            <div className="modalIcon">✅</div>
-            <h3 className="modalTitle">User Approved!</h3>
-            <p className="modalDesc">Share these temporary credentials with the user. They will be asked to change their password on first login.</p>
-            <div className="modalCreds">
-              <span className="modalCredsLabel">Temporary Password</span>
-              <code className="modalCredsCode">{approvedCreds.tempPassword}</code>
-            </div>
-            <button className="approveBtn" style={{ width: "100%" }} onClick={() => setApprovedCreds(null)}>Got it</button>
-          </div>
-        </div>
-      )}
-
-      <div className="adminBody">
+<div className="adminBody">
         {/* ── Sidebar ── */}
         <aside className="adminSidebar">
           <nav className="sideNav">
