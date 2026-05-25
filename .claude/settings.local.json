@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"C:\\\\Users\\\\Manideep Chowdary\\\\Downloads\\\\cosmosnextgen-site-update-main\\\\src\\\\components\\\\Jobs.jsx\")",
+      "Bash(del \"C:\\\\Users\\\\Manideep Chowdary\\\\Downloads\\\\cosmosnextgen-site-update-main\\\\src\\\\components\\\\JobDetail.jsx\")"
+    ]
+  }
+}
