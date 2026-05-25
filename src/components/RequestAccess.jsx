@@ -115,9 +115,30 @@ export default function RequestAccess() {
           align-items: center;
           justify-content: center;
           padding: 48px 20px;
+          background: #060914;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .authPage::before {
+          content: "";
+          position: absolute;
+          inset: 0;
           background:
-            radial-gradient(ellipse 800px 500px at 50% 0%, rgba(19,184,200,0.07) 0%, transparent 65%),
-            #0a0e1a;
+            radial-gradient(ellipse 900px 600px at 50% -5%, rgba(19,184,200,0.16) 0%, transparent 60%),
+            radial-gradient(ellipse 600px 500px at 10% 90%, rgba(125,223,187,0.1) 0%, transparent 55%),
+            radial-gradient(ellipse 500px 400px at 90% 80%, rgba(247,183,51,0.07) 0%, transparent 60%);
+          pointer-events: none;
+        }
+
+        .authPage::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+          background-size: 40px 40px;
+          mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+          pointer-events: none;
         }
 
         .authCard {
@@ -125,9 +146,12 @@ export default function RequestAccess() {
           max-width: 480px;
           padding: 40px 36px 36px;
           border-radius: 22px;
-          background: rgba(15,19,32,0.97);
-          border: 1px solid rgba(255,255,255,0.08);
-          box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+          background: rgba(10,14,28,0.85);
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
+          backdrop-filter: blur(20px);
+          position: relative;
+          z-index: 1;
           display: flex;
           flex-direction: column;
           gap: 24px;
