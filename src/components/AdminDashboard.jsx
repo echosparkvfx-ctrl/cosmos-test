@@ -1,35 +1,75 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
-const INITIAL_REQUESTS = [
-  { id: 1, name: "Sarah Mitchell", company: "TalentBridge Inc.", email: "sarah@talentbridge.com", role: "recruiter", reason: "We are a mid-size staffing firm looking to source candidates through COSMOS.", submitted_at: "Today, 10:32 AM", status: "pending" },
-  { id: 2, name: "Raj Patel", company: "CloudStaff Solutions", email: "raj@cloudstaff.com", role: "vendor", reason: "We place IT contractors and want to connect with active job openings on your platform.", submitted_at: "Today, 8:15 AM", status: "pending" },
-  { id: 3, name: "Monica Lee", company: "HireForce LLC", email: "monica@hireforce.com", role: "recruiter", reason: "Growing HR team looking to manage applicant pipeline through COSMOS.", submitted_at: "Yesterday, 3:44 PM", status: "pending" },
-  { id: 4, name: "David Okafor", company: "NextGen Staffing", email: "david@nextgenstaffing.com", role: "vendor", reason: "Staffing agency specializing in healthcare and finance placements.", submitted_at: "2d ago", status: "approved" },
-  { id: 5, name: "Priya Nair", company: "SwiftHire Co.", email: "priya@swifthire.com", role: "recruiter", reason: "Tech recruitment agency focusing on engineering roles.", submitted_at: "3d ago", status: "rejected" },
-];
-
-const USERS = [
-  { name: "Recruiter Demo", email: "recruiter@cosmos.com", role: "recruiter", created_at: "2026-01-01" },
-  { name: "Vendor Demo",    email: "vendor@cosmos.com",    role: "vendor",    created_at: "2026-01-01" },
-];
-
-const roleColor  = { recruiter: "#13b8c8", vendor: "#7ddfbb" };
-const statusColor = { pending: "#f7b733", approved: "#7ddfbb", rejected: "#ef4444", active: "#7ddfbb" };
+const roleColor   = { recruiter: "#13b8c8", vendor: "#7ddfbb" };
+const statusColor = { pending: "#f7b733", approved: "#7ddfbb", rejected: "#ef4444" };
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [requests, setRequests] = React.useState(INITIAL_REQUESTS);
-  const [users] = React.useState(USERS);
-  const [tab, setTab] = React.useState("stats");
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [requests,  setRequests]  = React.useState([]);
+  const [users,     setUsers]     = React.useState([]);
+  const [tab,       setTab]       = React.useState("stats");
+  const [menuOpen,  setMenuOpen]  = React.useState(false);
+  const [actionMsg, setActionMsg] = React.useState("");
+
+  // Load requests and users from Supabase
+  React.useEffect(() => {
+    fetchRequests();
+    fetchUsers();
+  }, []);
+
+  const fetchRequests = async () => {
+    const { data } = await supabase
+      .from("access_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setRequests(data);
+  };
+
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("role", ["recruiter", "vendor"])
+      .order("created_at", { ascending: false });
+    if (data) setUsers(data);
+  };
 
   const pending  = requests.filter((r) => r.status === "pending");
   const approved = requests.filter((r) => r.status === "approved");
   const rejected = requests.filter((r) => r.status === "rejected");
 
-  const approve = (id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
-  const reject  = (id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+  const approve = async (req) => {
+    setActionMsg("Sending invite...");
+    try {
+      // Call edge function to invite user via email
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ email: req.email, role: req.role, request_id: req.id }),
+        }
+      );
+      const result = await res.json();
+      if (result.error) { setActionMsg(`Error: ${result.error}`); return; }
+      setActionMsg(`✅ Invite sent to ${req.email}`);
+      setRequests((prev) => prev.map((r) => r.id === req.id ? { ...r, status: "approved" } : r));
+    } catch (err) {
+      setActionMsg("Failed to send invite. Try again.");
+    }
+    setTimeout(() => setActionMsg(""), 4000);
+  };
+
+  const reject = async (id) => {
+    await supabase.from("access_requests").update({ status: "rejected" }).eq("id", id);
+    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+  };
 
   return (
     <main className="adminPage">
@@ -58,6 +98,13 @@ export default function AdminDashboard() {
           </div>
         </div>
       </header>
+
+      {/* Action toast */}
+      {actionMsg && (
+        <div style={{ position:"fixed", bottom:24, right:24, background:"#1a2035", border:"1px solid rgba(255,255,255,0.12)", color:"#f5f5f5", padding:"12px 20px", borderRadius:12, zIndex:9999, fontSize:14, fontWeight:600, boxShadow:"0 8px 32px rgba(0,0,0,0.4)" }}>
+          {actionMsg}
+        </div>
+      )}
 
 <div className="adminBody">
         {/* ── Sidebar ── */}
@@ -160,7 +207,7 @@ export default function AdminDashboard() {
                         </div>
                         <p className="requestReason">"{r.reason}"</p>
                         <div className="requestActions">
-                          <button className="approveBtn" onClick={() => approve(r.id)}>✓ Approve & Send Credentials</button>
+                          <button className="approveBtn" onClick={() => approve(r)}>✓ Approve & Send Invite</button>
                           <button className="rejectBtn"  onClick={() => reject(r.id)}>✗ Reject</button>
                         </div>
                       </div>
