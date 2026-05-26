@@ -2,19 +2,12 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
-const ROLES = {
-  applicant: { label: "Applicant", icon: "👤", color: "#ff6b4a", desc: "Job seeker & candidate" },
-  recruiter: { label: "Recruiter", icon: "🏢", color: "#13b8c8", desc: "Hiring manager & HR"   },
-  vendor:    { label: "Vendor",    icon: "🤝", color: "#7ddfbb", desc: "Staffing & consulting"  },
-};
-
 export default function Register() {
   const navigate = useNavigate();
-  const [form,         setForm]        = React.useState({ name: "", email: "", password: "", confirm: "" });
-  const [selectedRole, setSelectedRole] = React.useState("applicant");
-  const [loading,      setLoading]     = React.useState(false);
-  const [error,        setError]       = React.useState("");
-  const [submitted,    setSubmitted]   = React.useState(false);
+  const [form,      setForm]      = React.useState({ name: "", email: "", password: "", confirm: "" });
+  const [loading,   setLoading]   = React.useState(false);
+  const [error,     setError]     = React.useState("");
+  const [submitted, setSubmitted] = React.useState(false);
 
   const handleChange = (e) => {
     setError("");
@@ -32,7 +25,7 @@ export default function Register() {
         email: form.email,
         password: form.password,
         options: {
-          data: { full_name: form.name, role: selectedRole },
+          data: { full_name: form.name, role: "applicant" },
         },
       });
       if (authError) {
@@ -48,7 +41,6 @@ export default function Register() {
     }
   };
 
-  const current = ROLES[selectedRole];
 
   return (
     <div className="regRoot">
@@ -115,10 +107,10 @@ export default function Register() {
               <div className="successIcon">✅</div>
               <h2 className="successTitle">Account Created!</h2>
               <p className="successDesc">
-                Registered as <strong>{current.label}</strong> with <strong>{form.email}</strong>.
+                Registered with <strong>{form.email}</strong>.
                 {" "}Click the confirmation link sent to your email, then sign in.
               </p>
-              <Link to={`/login/${selectedRole}`} className="submitBtn" style={{ display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }}>
+              <Link to="/login/applicant" className="submitBtn" style={{ display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }}>
                 Go to Login →
               </Link>
             </div>
@@ -131,26 +123,9 @@ export default function Register() {
           </a>
 
           <div className="formHeader">
-            <div className="formBadge" style={{ color: current.color, background: `${current.color}18`, border: `1px solid ${current.color}40` }}>
-              {current.icon} {current.label} Registration
-            </div>
+            <div className="formBadge">👤 Applicant Registration</div>
             <h2 className="formTitle">Create your account</h2>
-            <p className="formSub">Join COSMOS NextGen as {current.label.toLowerCase()}</p>
-          </div>
-
-          {/* role selector */}
-          <div className="roleTabs">
-            {Object.entries(ROLES).map(([key, r]) => (
-              <button
-                key={key}
-                type="button"
-                className={`roleTab ${selectedRole === key ? "roleTabOn" : ""}`}
-                style={selectedRole === key ? { "--rc": r.color } : {}}
-                onClick={() => { setSelectedRole(key); setError(""); }}
-              >
-                <span>{r.icon}</span>{r.label}
-              </button>
-            ))}
+            <p className="formSub">Join thousands of candidates finding their dream jobs</p>
           </div>
 
           {/* form */}
@@ -183,9 +158,8 @@ export default function Register() {
 
             {error && <div className="errBox">{error}</div>}
 
-            <button type="submit" className="submitBtn" disabled={loading}
-              style={{ background: `linear-gradient(135deg, ${current.color}, #f7b733)` }}>
-              {loading ? <><span className="spinner"/>Creating account…</> : `Create ${current.label} Account →`}
+            <button type="submit" className="submitBtn" disabled={loading}>
+              {loading ? <><span className="spinner"/>Creating account…</> : "Create free account →"}
             </button>
           </form>
 
