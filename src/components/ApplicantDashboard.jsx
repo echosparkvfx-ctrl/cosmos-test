@@ -21,19 +21,20 @@ export default function ApplicantDashboard() {
   const [coverLetter,  setCoverLetter] = React.useState("");
   const [profileForm,  setProfileForm] = React.useState({ full_name:"", bio:"", skills:"" });
   const [savingProfile,setSavingProfile]= React.useState(false);
+  const userRef = React.useRef(null);
 
   React.useEffect(() => {
     init();
-    // Realtime: auto-update jobs
     const channel = supabase
       .channel("applicant-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => {
         fetchJobs();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, (payload) => {
-        // Only refresh if it's this user's application
-        if (payload.new?.applicant_id === user?.id || payload.old?.applicant_id === user?.id) {
-          fetchApplications(user.id);
+        const uid = userRef.current?.id;
+        if (!uid) return;
+        if (payload.new?.applicant_id === uid || payload.old?.applicant_id === uid) {
+          fetchApplications(uid);
         }
       })
       .subscribe();
@@ -43,7 +44,7 @@ export default function ApplicantDashboard() {
   const init = async () => {
     const { data:{ user } } = await supabase.auth.getUser();
     if (!user) { navigate("/login"); return; }
-    setUser(user);
+    setUser(user); userRef.current = user;
     const { data:p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     setProfile(p);
     if (p) setProfileForm({ full_name:p.full_name||"", bio:p.bio||"", skills:p.skills||"" });

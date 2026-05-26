@@ -7,6 +7,10 @@ const STATUS_COLORS = {
   applied:"#13b8c8", reviewed:"#f7b733", shortlisted:"#7ddfbb",
   interview:"#ff6b4a", rejected:"#ef4444", hired:"#22c55e",
 };
+const SUB_STATUS_COLORS = {
+  submitted:"#13b8c8", reviewing:"#f7b733", shortlisted:"#7ddfbb",
+  rejected:"#ef4444", placed:"#22c55e",
+};
 const JOB_TYPES = ["Full-time","Part-time","Contract","Remote","Internship"];
 
 export default function RecruiterDashboard() {
@@ -16,8 +20,10 @@ export default function RecruiterDashboard() {
   const [tab,          setTab]         = React.useState("overview");
   const [jobs,         setJobs]        = React.useState([]);
   const [applications, setApplications]= React.useState([]);
+  const [submissions,  setSubmissions] = React.useState([]);
+  const [appCounts,    setAppCounts]   = React.useState({});
+  const [totalApps,    setTotalApps]   = React.useState(0);
   const [selectedJob,  setSelectedJob] = React.useState(null);
-  const selectedJobRef = React.useRef(null);
   const [loading,      setLoading]     = React.useState(true);
   const [toast,        setToast]       = React.useState("");
   const [jobForm,      setJobForm]     = React.useState({
@@ -26,14 +32,21 @@ export default function RecruiterDashboard() {
   });
   const [posting, setPosting] = React.useState(false);
 
+  const selectedJobRef = React.useRef(null);
+  const jobIdsRef      = React.useRef([]);
+
   React.useEffect(() => {
     init();
-    // Realtime: new application vasthే auto-update
     const channel = supabase
       .channel("recruiter-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "applications" }, () => {
         if (selectedJobRef.current) fetchApplications(selectedJobRef.current.id);
+        fetchAppCounts(jobIdsRef.current);
         showToast("🔔 New application received!");
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "vendor_submissions" }, () => {
+        fetchSubmissions(jobIdsRef.current);
+        showToast("🤝 New vendor submission!");
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -45,7 +58,10 @@ export default function RecruiterDashboard() {
     setUser(user);
     const { data:p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     setProfile(p);
-    await fetchJobs(user.id);
+    const jobsData = await fetchJobs(user.id);
+    const ids = (jobsData || []).map(j => j.id);
+    jobIdsRef.current = ids;
+    await Promise.all([fetchSubmissions(ids), fetchAppCounts(ids)]);
   };
 
   const fetchJobs = async (uid) => {
@@ -53,6 +69,7 @@ export default function RecruiterDashboard() {
       .eq("posted_by", uid).order("created_at", { ascending:false });
     setJobs(data || []);
     setLoading(false);
+    return data || [];
   };
 
   const fetchApplications = async (jobId) => {
@@ -65,6 +82,24 @@ export default function RecruiterDashboard() {
     setApplications(apps.map(a => ({ ...a, profiles: profMap[a.applicant_id] || null })));
   };
 
+  const fetchSubmissions = async (ids) => {
+    if (!ids.length) { setSubmissions([]); return; }
+    const { data } = await supabase.from("vendor_submissions")
+      .select("*, jobs(title, company)")
+      .in("job_id", ids).order("created_at", { ascending: false });
+    setSubmissions(data || []);
+  };
+
+  const fetchAppCounts = async (ids) => {
+    if (!ids.length) { setTotalApps(0); setAppCounts({}); return; }
+    const { data } = await supabase.from("applications").select("job_id").in("job_id", ids);
+    const counts = {};
+    let total = 0;
+    (data || []).forEach(a => { counts[a.job_id] = (counts[a.job_id] || 0) + 1; total++; });
+    setAppCounts(counts);
+    setTotalApps(total);
+  };
+
   const openJob = async (job) => {
     setSelectedJob(job); selectedJobRef.current = job; setTab("applicants");
     await fetchApplications(job.id);
@@ -74,6 +109,12 @@ export default function RecruiterDashboard() {
     await supabase.from("applications").update({ status }).eq("id", appId);
     setApplications(prev => prev.map(a => a.id===appId ? {...a, status} : a));
     showToast("Status updated to " + status);
+  };
+
+  const updateSubStatus = async (subId, status) => {
+    await supabase.from("vendor_submissions").update({ status }).eq("id", subId);
+    setSubmissions(prev => prev.map(s => s.id===subId ? {...s, status} : s));
+    showToast("Submission status updated to " + status);
   };
 
   const toggleJobStatus = async (job) => {
@@ -89,7 +130,10 @@ export default function RecruiterDashboard() {
     if (error) { showToast("Error: "+error.message); setPosting(false); return; }
     showToast("✅ Job posted!");
     setJobForm({ title:"", company:"", location:"", type:"Full-time", description:"", requirements:"", salary_range:"" });
-    await fetchJobs(user.id);
+    const updated = await fetchJobs(user.id);
+    const ids = (updated || []).map(j => j.id);
+    jobIdsRef.current = ids;
+    await fetchAppCounts(ids);
     setPosting(false); setTab("jobs");
   };
 
@@ -113,9 +157,10 @@ export default function RecruiterDashboard() {
         <aside className="rdSidebar">
           <nav className="rdNav">
             {[
-              {id:"overview", icon:"📊", label:"Overview"},
-              {id:"jobs",     icon:"📋", label:"My Jobs", badge:jobs.length},
-              {id:"post-job", icon:"➕", label:"Post Job"},
+              {id:"overview",     icon:"📊", label:"Overview"},
+              {id:"jobs",         icon:"📋", label:"My Jobs",           badge:jobs.length},
+              {id:"post-job",     icon:"➕", label:"Post Job"},
+              {id:"submissions",  icon:"🤝", label:"Vendor Candidates", badge:submissions.length},
             ].map(n => (
               <button key={n.id}
                 className={`rdNavLink ${tab===n.id||(tab==="applicants"&&n.id==="jobs")?"rdNavActive":""}`}
@@ -135,9 +180,10 @@ export default function RecruiterDashboard() {
               <h2 className="rdTitle">Overview</h2>
               <div className="rdStats">
                 {[
-                  {label:"Active Jobs",  value:activeJobs,        icon:"📋", color:"#13b8c8"},
-                  {label:"Total Jobs",   value:jobs.length,       icon:"💼", color:"#f7b733"},
-                  {label:"Paused Jobs",  value:jobs.length-activeJobs, icon:"⏸️", color:"#7ddfbb"},
+                  {label:"Active Jobs",        value:activeJobs,                    icon:"📋", color:"#13b8c8"},
+                  {label:"Total Applications", value:totalApps,                     icon:"📨", color:"#ff6b4a"},
+                  {label:"Vendor Submissions", value:submissions.length,            icon:"🤝", color:"#7ddfbb"},
+                  {label:"Total Jobs",         value:jobs.length,                   icon:"💼", color:"#f7b733"},
                 ].map(s => (
                   <div className="rdStatCard" key={s.label} style={{"--cc":s.color}}>
                     <span className="rdStatIcon">{s.icon}</span>
@@ -162,6 +208,9 @@ export default function RecruiterDashboard() {
                           <p className="rdJobMeta">{job.company} · {job.location} · {job.type}</p>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {appCounts[job.id] > 0 && (
+                            <span className="rdAppCountPill">{appCounts[job.id]} applicant{appCounts[job.id]!==1?"s":""}</span>
+                          )}
                           <span className="rdStatusPill" style={{"--sc":job.status==="active"?"#7ddfbb":"#f7b733"}}>{job.status}</span>
                           <span className="rdJobDate">{job.created_at?.slice(0,10)}</span>
                         </div>
@@ -226,11 +275,18 @@ export default function RecruiterDashboard() {
                               <p className="rdJobCardMeta">{job.company} · {job.location} · {job.type}</p>
                               {job.salary_range && <p className="rdJobCardSalary">{job.salary_range}</p>}
                             </div>
-                            <span className="rdStatusPill" style={{"--sc":job.status==="active"?"#7ddfbb":"#f7b733"}}>{job.status}</span>
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+                              <span className="rdStatusPill" style={{"--sc":job.status==="active"?"#7ddfbb":"#f7b733"}}>{job.status}</span>
+                              {appCounts[job.id] > 0 && (
+                                <span className="rdAppCountPill">{appCounts[job.id]} applicant{appCounts[job.id]!==1?"s":""}</span>
+                              )}
+                            </div>
                           </div>
                           {job.description && <p className="rdJobCardDesc">{job.description.slice(0,130)}{job.description.length>130?"…":""}</p>}
                           <div className="rdJobCardActions">
-                            <button className="rdViewAppsBtn" onClick={() => openJob(job)}>View Applicants</button>
+                            <button className="rdViewAppsBtn" onClick={() => openJob(job)}>
+                              View Applicants {appCounts[job.id]>0?`(${appCounts[job.id]})`:""}
+                            </button>
                             <button className="rdToggleBtn" onClick={() => toggleJobStatus(job)}>
                               {job.status==="active"?"Pause":"Activate"}
                             </button>
@@ -295,6 +351,45 @@ export default function RecruiterDashboard() {
               </form>
             </div>
           )}
+
+          {/* Vendor Submissions */}
+          {tab==="submissions" && (
+            <div className="rdPanel">
+              <h2 className="rdTitle">Vendor Candidates</h2>
+              <p className="rdSubTitle" style={{margin:0}}>Candidates submitted by your vendor partners for your jobs</p>
+              {submissions.length===0 ? (
+                <div className="rdEmpty">No vendor submissions yet.</div>
+              ) : (
+                <div className="rdAppTable">
+                  {submissions.map(sub => (
+                    <div className="rdAppRow" key={sub.id}>
+                      <div className="rdAppAvatar" style={{background:"rgba(125,223,187,0.12)",borderColor:"rgba(125,223,187,0.3)",color:"#7ddfbb"}}>
+                        {sub.candidate_name?.charAt(0).toUpperCase()||"C"}
+                      </div>
+                      <div className="rdAppInfo">
+                        <p className="rdAppName">{sub.candidate_name}</p>
+                        <p className="rdAppEmail">{sub.candidate_email}</p>
+                        {sub.skills && <p style={{margin:0,fontSize:11,color:"#7ddfbb",fontWeight:600}}>{sub.skills}</p>}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p style={{margin:"0 0 2px",fontSize:12,color:"rgba(245,245,245,0.5)"}}>📋 {sub.jobs?.title} at {sub.jobs?.company}</p>
+                        {sub.experience && <p style={{margin:0,fontSize:12,color:"rgba(245,245,245,0.4)"}}>{sub.experience}</p>}
+                      </div>
+                      <div className="rdAppActions">
+                        <select className="rdStatusSelect" value={sub.status}
+                          style={{"--sc":SUB_STATUS_COLORS[sub.status]||"#13b8c8"}}
+                          onChange={e => updateSubStatus(sub.id, e.target.value)}>
+                          {Object.keys(SUB_STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <span className="rdAppDate">{sub.created_at?.slice(0,10)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
 
@@ -310,9 +405,9 @@ export default function RecruiterDashboard() {
         .rdPanel{display:flex;flex-direction:column;gap:24px;max-width:900px;}
         .rdTitle{margin:0;font-size:22px;font-weight:900;color:#f5f5f5;letter-spacing:-0.02em;}
         .rdSubTitle{margin:-16px 0 0;font-size:13px;color:rgba(245,245,245,0.45);}
-        .rdStats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-        .rdStatCard{padding:22px 18px;border-radius:14px;background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.07);border-top:3px solid var(--cc);display:flex;flex-direction:column;gap:8px;}
-        .rdStatIcon{font-size:22px;}.rdStatVal{font-size:30px;font-weight:950;color:#f5f5f5;line-height:1;}.rdStatLabel{font-size:12px;color:rgba(245,245,245,0.4);font-weight:600;}
+        .rdStats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+        .rdStatCard{padding:18px 16px;border-radius:14px;background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.07);border-top:3px solid var(--cc);display:flex;flex-direction:column;gap:6px;}
+        .rdStatIcon{font-size:20px;}.rdStatVal{font-size:26px;font-weight:950;color:#f5f5f5;line-height:1;}.rdStatLabel{font-size:11px;color:rgba(245,245,245,0.4);font-weight:600;}
         .rdSection{background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden;}
         .rdSectionHead{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.06);}
         .rdSectionTitle{margin:0;font-size:14px;font-weight:800;color:#f5f5f5;}
@@ -321,6 +416,7 @@ export default function RecruiterDashboard() {
         .rdJobRow:last-child{border-bottom:none;}.rdJobRow:hover{background:rgba(255,255,255,0.03);}
         .rdJobTitle{margin:0 0 3px;font-size:13.5px;font-weight:750;color:#f5f5f5;}.rdJobMeta{margin:0;font-size:12px;color:rgba(245,245,245,0.4);}.rdJobDate{font-size:11.5px;color:rgba(245,245,245,0.3);flex-shrink:0;}.rdJobInfo{flex:1;}
         .rdStatusPill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:color-mix(in srgb,var(--sc) 14%,transparent);color:var(--sc);border:1px solid color-mix(in srgb,var(--sc) 28%,transparent);text-transform:capitalize;}
+        .rdAppCountPill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,107,74,0.12);color:#ff6b4a;border:1px solid rgba(255,107,74,0.25);}
         .rdEmpty{padding:40px 20px;text-align:center;color:rgba(245,245,245,0.35);font-size:14px;}
         .rdLinkBtn{background:none;border:none;color:#f7b733;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:color 0.15s;padding:0;}
         .rdLinkBtn:hover{color:#ff6b4a;}
@@ -338,7 +434,7 @@ export default function RecruiterDashboard() {
         .rdAppTable{display:flex;flex-direction:column;gap:12px;}
         .rdAppRow{background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
         .rdAppAvatar{width:40px;height:40px;border-radius:50%;background:rgba(19,184,200,0.15);border:1px solid rgba(19,184,200,0.3);color:#13b8c8;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;flex-shrink:0;}
-        .rdAppInfo{flex:1;min-width:140px;}.rdAppName{margin:0 0 2px;font-size:13.5px;font-weight:800;color:#f5f5f5;}.rdAppEmail{margin:0;font-size:12px;color:rgba(245,245,245,0.4);}
+        .rdAppInfo{min-width:140px;}.rdAppName{margin:0 0 2px;font-size:13.5px;font-weight:800;color:#f5f5f5;}.rdAppEmail{margin:0;font-size:12px;color:rgba(245,245,245,0.4);}
         .rdAppCover{margin:0;font-size:12px;color:rgba(245,245,245,0.4);font-style:italic;flex:1;min-width:200px;}.rdAppDate{font-size:11.5px;color:rgba(245,245,245,0.3);flex-shrink:0;}.rdAppActions{flex-shrink:0;}
         .rdStatusSelect{height:32px;padding:0 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--sc) 30%,transparent);background:color-mix(in srgb,var(--sc) 10%,transparent);color:var(--sc);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;outline:none;}
         .rdForm{display:flex;flex-direction:column;gap:18px;background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:28px;}

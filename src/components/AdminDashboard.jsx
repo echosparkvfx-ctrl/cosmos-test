@@ -7,16 +7,19 @@ const statusColor = { pending: "#f7b733", approved: "#7ddfbb", rejected: "#ef444
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [requests,  setRequests]  = React.useState([]);
-  const [users,     setUsers]     = React.useState([]);
-  const [tab,       setTab]       = React.useState("stats");
-  const [menuOpen,  setMenuOpen]  = React.useState(false);
-  const [actionMsg, setActionMsg] = React.useState("");
+  const [requests,   setRequests]   = React.useState([]);
+  const [users,      setUsers]      = React.useState([]);
+  const [jobs,       setJobs]       = React.useState([]);
+  const [totalApps,  setTotalApps]  = React.useState(0);
+  const [tab,        setTab]        = React.useState("stats");
+  const [menuOpen,   setMenuOpen]   = React.useState(false);
+  const [actionMsg,  setActionMsg]  = React.useState("");
 
-  // Load requests and users from Supabase
   React.useEffect(() => {
     fetchRequests();
     fetchUsers();
+    fetchJobs();
+    fetchAppCount();
   }, []);
 
   const fetchRequests = async () => {
@@ -34,6 +37,17 @@ export default function AdminDashboard() {
       .in("role", ["recruiter", "vendor"])
       .order("created_at", { ascending: false });
     if (data) setUsers(data);
+  };
+
+  const fetchJobs = async () => {
+    const { data } = await supabase.from("jobs").select("*, profiles(full_name, email)")
+      .order("created_at", { ascending: false });
+    if (data) setJobs(data);
+  };
+
+  const fetchAppCount = async () => {
+    const { count } = await supabase.from("applications").select("id", { count: "exact", head: true });
+    setTotalApps(count || 0);
   };
 
   const pending  = requests.filter((r) => r.status === "pending");
@@ -120,6 +134,9 @@ export default function AdminDashboard() {
             <button className={`sideLink ${tab === "users" ? "sideLinkActive" : ""}`} onClick={() => setTab("users")}>
               <span>👥</span> Manage Users
             </button>
+            <button className={`sideLink ${tab === "jobs" ? "sideLinkActive" : ""}`} onClick={() => setTab("jobs")}>
+              <span>📋</span> All Jobs
+            </button>
           </nav>
         </aside>
 
@@ -147,8 +164,8 @@ export default function AdminDashboard() {
                 {[
                   { label: "Pending Requests",  value: pending.length,  icon: "⏳", color: "#f7b733", action: () => setTab("requests") },
                   { label: "Active Users",      value: users.length,    icon: "✅", color: "#7ddfbb", action: () => setTab("users") },
-                  { label: "Total Recruiters",  value: users.filter(u => u.role === "recruiter").length, icon: "🏢", color: "#13b8c8", action: () => setTab("users") },
-                  { label: "Total Vendors",     value: users.filter(u => u.role === "vendor").length,    icon: "🤝", color: "#ff6b4a", action: () => setTab("users") },
+                  { label: "Total Jobs Posted", value: jobs.length,     icon: "📋", color: "#13b8c8", action: () => setTab("jobs") },
+                  { label: "Total Applications",value: totalApps,       icon: "📨", color: "#ff6b4a", action: () => setTab("jobs") },
                 ].map((s) => (
                   <button className="statCard" key={s.label} style={{ "--cc": s.color }} onClick={s.action}>
                     <span className="statIcon">{s.icon}</span>
@@ -268,6 +285,45 @@ export default function AdminDashboard() {
 
               {pending.length === 0 && approved.length === 0 && rejected.length === 0 && (
                 <div className="emptyState">📭 No requests yet.</div>
+              )}
+            </div>
+          )}
+
+          {/* ── Jobs tab ── */}
+          {tab === "jobs" && (
+            <div className="tabPanel">
+              <h2 className="tabTitle">All Jobs</h2>
+              {jobs.length === 0 ? (
+                <div className="emptyState">📭 No jobs posted yet.</div>
+              ) : (
+                <div className="tableWrap">
+                  <table className="adminTable">
+                    <thead>
+                      <tr>
+                        <th>Job Title</th>
+                        <th>Company</th>
+                        <th>Location</th>
+                        <th>Type</th>
+                        <th>Posted By</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {jobs.map((j) => (
+                        <tr key={j.id}>
+                          <td className="tdName">{j.title}</td>
+                          <td>{j.company}</td>
+                          <td className="tdMuted">{j.location || "—"}</td>
+                          <td className="tdMuted">{j.type}</td>
+                          <td className="tdMuted">{j.profiles?.full_name || j.profiles?.email || "—"}</td>
+                          <td><span className="statusPill" style={{ "--sc": j.status === "active" ? "#7ddfbb" : "#f7b733" }}>{j.status}</span></td>
+                          <td className="tdMuted">{j.created_at?.slice(0, 10)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}
