@@ -2,12 +2,19 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
+const ROLES = {
+  applicant: { label: "Applicant", icon: "👤", color: "#ff6b4a", desc: "Job seeker & candidate" },
+  recruiter: { label: "Recruiter", icon: "🏢", color: "#13b8c8", desc: "Hiring manager & HR"   },
+  vendor:    { label: "Vendor",    icon: "🤝", color: "#7ddfbb", desc: "Staffing & consulting"  },
+};
+
 export default function Register() {
   const navigate = useNavigate();
-  const [form,      setForm]      = React.useState({ name: "", email: "", password: "", confirm: "" });
-  const [loading,   setLoading]   = React.useState(false);
-  const [error,     setError]     = React.useState("");
-  const [submitted, setSubmitted] = React.useState(false);
+  const [form,         setForm]        = React.useState({ name: "", email: "", password: "", confirm: "" });
+  const [selectedRole, setSelectedRole] = React.useState("applicant");
+  const [loading,      setLoading]     = React.useState(false);
+  const [error,        setError]       = React.useState("");
+  const [submitted,    setSubmitted]   = React.useState(false);
 
   const handleChange = (e) => {
     setError("");
@@ -25,7 +32,7 @@ export default function Register() {
         email: form.email,
         password: form.password,
         options: {
-          data: { full_name: form.name, role: "applicant" },
+          data: { full_name: form.name, role: selectedRole },
         },
       });
       if (authError) {
@@ -40,6 +47,8 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  const current = ROLES[selectedRole];
 
   return (
     <div className="regRoot">
@@ -104,12 +113,12 @@ export default function Register() {
           {submitted ? (
             <div className="successBlock">
               <div className="successIcon">✅</div>
-              <h2 className="successTitle">Check your email!</h2>
+              <h2 className="successTitle">Account Created!</h2>
               <p className="successDesc">
-                We sent a confirmation link to <strong>{form.email}</strong>.
-                Click it to activate your account, then sign in.
+                Registered as <strong>{current.label}</strong> with <strong>{form.email}</strong>.
+                {" "}Click the confirmation link sent to your email, then sign in.
               </p>
-              <Link to="/login/applicant" className="submitBtn" style={{ display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }}>
+              <Link to={`/login/${selectedRole}`} className="submitBtn" style={{ display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }}>
                 Go to Login →
               </Link>
             </div>
@@ -122,23 +131,27 @@ export default function Register() {
           </a>
 
           <div className="formHeader">
-            <div className="formBadge">👤 Applicant Registration</div>
+            <div className="formBadge" style={{ color: current.color, background: `${current.color}18`, border: `1px solid ${current.color}40` }}>
+              {current.icon} {current.label} Registration
+            </div>
             <h2 className="formTitle">Create your account</h2>
-            <p className="formSub">Join thousands of candidates finding their dream jobs</p>
+            <p className="formSub">Join COSMOS NextGen as {current.label.toLowerCase()}</p>
           </div>
 
-          {/* google */}
-          <button className="googleBtn" onClick={() => alert("Google OAuth requires backend integration.")}>
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continue with Google
-          </button>
-
-          <div className="divider"><span/><em>or register with email</em><span/></div>
+          {/* role selector */}
+          <div className="roleTabs">
+            {Object.entries(ROLES).map(([key, r]) => (
+              <button
+                key={key}
+                type="button"
+                className={`roleTab ${selectedRole === key ? "roleTabOn" : ""}`}
+                style={selectedRole === key ? { "--rc": r.color } : {}}
+                onClick={() => { setSelectedRole(key); setError(""); }}
+              >
+                <span>{r.icon}</span>{r.label}
+              </button>
+            ))}
+          </div>
 
           {/* form */}
           <form onSubmit={handleSubmit} className="theForm">
@@ -170,8 +183,9 @@ export default function Register() {
 
             {error && <div className="errBox">{error}</div>}
 
-            <button type="submit" className="submitBtn" disabled={loading}>
-              {loading ? <><span className="spinner"/>Creating account…</> : "Create free account →"}
+            <button type="submit" className="submitBtn" disabled={loading}
+              style={{ background: `linear-gradient(135deg, ${current.color}, #f7b733)` }}>
+              {loading ? <><span className="spinner"/>Creating account…</> : `Create ${current.label} Account →`}
             </button>
           </form>
 
@@ -350,9 +364,30 @@ export default function Register() {
         .formBadge {
           display: inline-flex; align-items: center; justify-content: center; gap: 6px;
           padding: 6px 14px; border-radius: 999px;
-          background: rgba(255,107,74,0.1); border: 1px solid rgba(255,107,74,0.25);
-          color: #ff6b4a; font-size: 12px; font-weight: 800;
-          margin: 0 auto;
+          font-size: 12px; font-weight: 800;
+          margin: 0 auto; transition: all 0.2s;
+        }
+
+        /* role tabs */
+        .roleTabs {
+          display: flex;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px; padding: 4px; gap: 2px;
+        }
+        .roleTab {
+          flex: 1; display: flex; align-items: center; justify-content: center;
+          gap: 5px; height: 38px; border-radius: 8px; border: none;
+          background: transparent; color: rgba(245,245,245,0.4);
+          font-size: 12px; font-weight: 750; cursor: pointer;
+          transition: all 0.18s; font-family: inherit;
+        }
+        .roleTab:hover { color: rgba(245,245,245,0.75); background: rgba(255,255,255,0.05); }
+        .roleTabOn {
+          background: rgba(255,255,255,0.1) !important;
+          color: #f5f5f5 !important;
+          border-bottom: 2px solid var(--rc, #ff6b4a);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
         }
         .formTitle {
           margin: 0; font-size: 26px; font-weight: 900;
