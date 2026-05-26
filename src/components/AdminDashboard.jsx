@@ -46,7 +46,7 @@ export default function AdminDashboard() {
       // Call edge function to invite user via email
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quick-task`,
         {
           method: "POST",
           headers: {
