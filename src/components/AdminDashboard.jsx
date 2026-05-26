@@ -5,12 +5,30 @@ import { supabase } from "../lib/supabase";
 const roleColor   = { recruiter: "#13b8c8", vendor: "#7ddfbb" };
 const statusColor = { pending: "#f7b733", approved: "#7ddfbb", rejected: "#ef4444" };
 
+function BarChart({ data, color = "#ff6b4a", label = "Applications" }) {
+  const max = Math.max(...data.map(d => d.count), 1);
+  return (
+    <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:80, padding:"0 4px" }}>
+      {data.map((d, i) => (
+        <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+          <span style={{ fontSize:10, color:"rgba(245,245,245,0.45)", fontWeight:700 }}>{d.count||""}</span>
+          <div style={{ width:"100%", background:`color-mix(in srgb,${color} 18%,transparent)`, borderRadius:4, overflow:"hidden", height:56 }}>
+            <div style={{ width:"100%", height:`${Math.round((d.count/max)*100)}%`, background:color, borderRadius:4, marginTop:"auto", transition:"height 0.4s ease" }} />
+          </div>
+          <span style={{ fontSize:9, color:"rgba(245,245,245,0.3)", fontWeight:600, whiteSpace:"nowrap" }}>{d.day}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [requests,   setRequests]   = React.useState([]);
   const [users,      setUsers]      = React.useState([]);
   const [jobs,       setJobs]       = React.useState([]);
   const [totalApps,  setTotalApps]  = React.useState(0);
+  const [chartData,  setChartData]  = React.useState([]);
   const [tab,        setTab]        = React.useState("stats");
   const [menuOpen,   setMenuOpen]   = React.useState(false);
   const [actionMsg,  setActionMsg]  = React.useState("");
@@ -20,6 +38,7 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchJobs();
     fetchAppCount();
+    fetchChartData();
   }, []);
 
   const fetchRequests = async () => {
@@ -48,6 +67,21 @@ export default function AdminDashboard() {
   const fetchAppCount = async () => {
     const { count } = await supabase.from("applications").select("id", { count: "exact", head: true });
     setTotalApps(count || 0);
+  };
+
+  const fetchChartData = async () => {
+    const days = Array.from({length:7},(_,i)=>{
+      const d = new Date(); d.setDate(d.getDate()-6+i);
+      return { day: d.toLocaleDateString("en",{weekday:"short"}), date: d.toISOString().slice(0,10), count:0 };
+    });
+    const since = days[0].date + "T00:00:00";
+    const { data } = await supabase.from("applications").select("created_at").gte("created_at", since);
+    (data||[]).forEach(a => {
+      const d = a.created_at?.slice(0,10);
+      const slot = days.find(x=>x.date===d);
+      if (slot) slot.count++;
+    });
+    setChartData(days);
   };
 
   const pending  = requests.filter((r) => r.status === "pending");
@@ -174,6 +208,21 @@ export default function AdminDashboard() {
                   </button>
                 ))}
               </div>
+
+              {/* 7-day applications chart */}
+              {chartData.length > 0 && (
+                <div className="activityPanel">
+                  <div className="panelHead">
+                    <h3 className="panelTitle">Applications — Last 7 Days</h3>
+                    <span style={{ fontSize:12, color:"rgba(245,245,245,0.35)", fontWeight:600 }}>
+                      {chartData.reduce((s,d)=>s+d.count,0)} total
+                    </span>
+                  </div>
+                  <div style={{ padding:"16px 20px 12px" }}>
+                    <BarChart data={chartData} color="#ff6b4a" />
+                  </div>
+                </div>
+              )}
 
               {/* Recent activity */}
               <div className="activityPanel">

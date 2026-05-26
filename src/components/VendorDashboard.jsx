@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import AppNavbar from "./AppNavbar.jsx";
+import { notify } from "../lib/notify.js";
 
 const SC = { submitted:"#13b8c8",reviewing:"#f7b733",shortlisted:"#7ddfbb",rejected:"#ef4444",placed:"#22c55e" };
 const STATUS_MSG = { submitted:"Submitted. Waiting for recruiter review.",reviewing:"Recruiter is reviewing your candidate.",shortlisted:"Candidate shortlisted!",rejected:"Not selected for this role.",placed:"✅ Candidate placed! Great work." };
@@ -66,6 +67,7 @@ export default function VendorDashboard() {
     setSaving(false);
     if (error) { showToast("Error: "+error.message); return; }
     showToast("✅ Candidate submitted!");
+    if (submitting.posted_by) await notify(submitting.posted_by, "New Vendor Submission", `${profile?.full_name||userName} submitted ${subForm.candidate_name} for ${submitting.title}`);
     setSubForm({candidate_name:"",candidate_email:"",skills:"",experience:"",notes:""});
     setSubmitting(null);
     await fetchSubmissions(user.id);
@@ -86,7 +88,7 @@ export default function VendorDashboard() {
 
   return (
     <>
-      <AppNavbar role="vendor" userName={userName} />
+      <AppNavbar role="vendor" userName={userName} userId={user?.id} onTabChange={setTab} />
 
       {toast && <div className="vdToast">{toast}</div>}
 

@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import AppNavbar from "./AppNavbar.jsx";
+import { notify } from "../lib/notify.js";
 
 const SC = { applied:"#13b8c8",reviewed:"#f7b733",shortlisted:"#7ddfbb",interview:"#ff6b4a",rejected:"#ef4444",hired:"#22c55e" };
 const STATUS_MSG = {
@@ -29,6 +30,7 @@ export default function ApplicantDashboard() {
   const [submitting,   setSubmitting]  = React.useState(false);
   const [profileForm,  setProfileForm] = React.useState({ full_name:"",bio:"",skills:"",phone:"",linkedin:"" });
   const [savingProfile,setSavingProfile]= React.useState(false);
+  const [uploadingResume, setUploadingResume] = React.useState(false);
   const [search,       setSearch]      = React.useState("");
   const [filterType,   setFilterType]  = React.useState("All");
   const [newStatusAlert, setNewStatusAlert] = React.useState(null);
@@ -83,8 +85,25 @@ export default function ApplicantDashboard() {
     setSubmitting(false);
     if (error) { showToast("Error: "+error.message); return; }
     showToast("✅ Application submitted!");
+    const job = jobs.find(j=>j.id===jobId);
+    if (job?.posted_by) await notify(job.posted_by, "New Application", `${userName} applied for ${job.title}`);
     setCoverLetter(""); setApplying(null);
     await fetchApplications(user.id);
+  };
+
+  const uploadResume = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingResume(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/resume.${ext}`;
+    const { error: upErr } = await supabase.storage.from("resumes").upload(path, file, { upsert: true });
+    if (upErr) { showToast("Upload error: "+upErr.message); setUploadingResume(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("resumes").getPublicUrl(path);
+    await supabase.from("profiles").update({ resume_url: publicUrl }).eq("id", user.id);
+    setProfile(p=>({...p, resume_url: publicUrl}));
+    showToast("✅ Resume uploaded!");
+    setUploadingResume(false);
   };
 
   const withdrawApplication = async (appId) => {
@@ -119,7 +138,7 @@ export default function ApplicantDashboard() {
 
   return (
     <>
-      <AppNavbar role="applicant" userName={userName} />
+      <AppNavbar role="applicant" userName={userName} userId={user?.id} onTabChange={setTab} />
 
       {toast && <div className="adToast">{toast}</div>}
 
@@ -368,6 +387,17 @@ export default function ApplicantDashboard() {
                   <label>Email</label>
                   <input value={user?.email||""} readOnly />
                 </div>
+                <div className="adResumeSection">
+                  <p className="adResumeLabel">Resume / CV</p>
+                  {profile?.resume_url && (
+                    <a href={profile.resume_url} target="_blank" rel="noopener noreferrer" className="adResumeLink">📄 View current resume</a>
+                  )}
+                  <label className="adResumeUpload">
+                    <input type="file" accept=".pdf,.doc,.docx" onChange={uploadResume} style={{display:"none"}} disabled={uploadingResume} />
+                    <span className="adResumeBtn">{uploadingResume ? "Uploading…" : profile?.resume_url ? "Replace Resume" : "Upload Resume"}</span>
+                    <span className="adResumeHint">PDF, DOC, DOCX · Max 10MB</span>
+                  </label>
+                </div>
                 <button type="submit" className="adSubmitBtn" disabled={savingProfile}>{savingProfile?"Saving…":"Save Profile"}</button>
               </form>
             </div>
@@ -386,14 +416,14 @@ export default function ApplicantDashboard() {
         .adNav{display:flex;flex-direction:column;gap:4px;}
         .adNavLink{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;border:none;background:none;color:rgba(245,245,245,0.5);font-size:13px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;transition:all 0.18s;}
         .adNavLink:hover{color:#f5f5f5;background:rgba(255,255,255,0.05);}
-        .adNavActive{color:#f5f5f5!important;background:rgba(255,107,74,0.1)!important;box-shadow:inset 2px 0 0 #ff6b4a;}
-        .adBadge{margin-left:auto;background:#ff6b4a;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
+        .adNavActive{color:#f5f5f5!important;background:rgba(167,139,250,0.1)!important;box-shadow:inset 2px 0 0 #a78bfa;}
+        .adBadge{margin-left:auto;background:#a78bfa;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
         .adProfileCard{background:rgba(15,19,32,0.8);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;}
         .adProfileCardLabel{margin:0 0 8px;font-size:11px;font-weight:700;color:rgba(245,245,245,0.4);text-transform:uppercase;letter-spacing:0.06em;}
         .adProgressBar{height:5px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden;}
-        .adProgressFill{height:100%;border-radius:999px;background:linear-gradient(90deg,#ff6b4a,#f7b733);transition:width 0.4s ease;}
+        .adProgressFill{height:100%;border-radius:999px;background:linear-gradient(90deg,#a78bfa,#c4b5fd);transition:width 0.4s ease;}
         .adProfileCardPct{margin:6px 0 8px;font-size:12px;font-weight:700;color:#f5f5f5;}
-        .adProfileCardBtn{background:none;border:none;color:#f7b733;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;}
+        .adProfileCardBtn{background:none;border:none;color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;}
         .adContent{flex:1;padding:32px 28px;min-width:0;}
         .adPanel{display:flex;flex-direction:column;gap:24px;max-width:900px;}
         .adTitle{margin:0;font-size:22px;font-weight:900;color:#f5f5f5;letter-spacing:-0.02em;}
@@ -403,13 +433,13 @@ export default function ApplicantDashboard() {
         .adSection{background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden;}
         .adSectionHead{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.06);}
         .adSectionTitle{margin:0;font-size:14px;font-weight:800;color:#f5f5f5;}
-        .adLinkBtn{background:none;border:none;color:#f7b733;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;}
-        .adLinkBtn:hover{color:#ff6b4a;}
+        .adLinkBtn{background:none;border:none;color:#a78bfa;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;}
+        .adLinkBtn:hover{color:#c4b5fd;}
         .adJobList{display:flex;flex-direction:column;}
         .adJobRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04);}
         .adJobRow:last-child{border-bottom:none;}
         .adJobInfo{flex:1;}.adJobTitle{margin:0 0 3px;font-size:13.5px;font-weight:750;color:#f5f5f5;}.adJobMeta{margin:0 0 2px;font-size:12px;color:rgba(245,245,245,0.4);}.adJobSalary{margin:0;font-size:12px;color:#7ddfbb;font-weight:700;}
-        .adQuickApply{height:32px;padding:0 14px;border-radius:999px;border:none;background:linear-gradient(135deg,#ff6b4a,#f7b733);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;}
+        .adQuickApply{height:32px;padding:0 14px;border-radius:999px;border:none;background:linear-gradient(135deg,#a78bfa,#c4b5fd);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;}
         .adAppliedTag{font-size:12px;font-weight:800;color:#7ddfbb;background:rgba(125,223,187,0.1);border:1px solid rgba(125,223,187,0.25);padding:4px 12px;border-radius:999px;flex-shrink:0;}
         .adAppList{display:flex;flex-direction:column;}
         .adAppRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,0.04);}
@@ -424,7 +454,7 @@ export default function ApplicantDashboard() {
         .adFilterRow{display:flex;gap:8px;flex-wrap:wrap;}
         .adFilterPill{height:30px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(245,245,245,0.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;}
         .adFilterPill:hover{color:#f5f5f5;border-color:rgba(255,255,255,0.25);}
-        .adFilterActive{background:rgba(255,107,74,0.12)!important;color:#ff6b4a!important;border-color:rgba(255,107,74,0.3)!important;}
+        .adFilterActive{background:rgba(167,139,250,0.12)!important;color:#a78bfa!important;border-color:rgba(167,139,250,0.3)!important;}
         /* Job cards */
         .adJobCards{display:flex;flex-direction:column;gap:14px;}
         .adJobCard{background:rgba(15,19,32,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;transition:border-color 0.15s;}
@@ -433,7 +463,7 @@ export default function ApplicantDashboard() {
         .adJobCardTitle{margin:0 0 4px;font-size:15px;font-weight:800;color:#f5f5f5;}.adJobCardMeta{margin:0;font-size:12.5px;color:rgba(245,245,245,0.45);}
         .adTagPill{display:inline-flex;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,0.15);color:rgba(245,245,245,0.6);}
         .adJobCardDesc{margin:0;font-size:13px;color:rgba(245,245,245,0.45);line-height:1.6;}.adJobCardReqs{margin:0;font-size:12.5px;color:rgba(245,245,245,0.4);line-height:1.6;}.adJobCardDate{margin:0;font-size:11.5px;color:rgba(245,245,245,0.3);}
-        .adApplyBtnCard{height:38px;padding:0 18px;border-radius:999px;border:none;background:linear-gradient(135deg,#ff6b4a,#f7b733);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;transition:transform 0.15s;}
+        .adApplyBtnCard{height:38px;padding:0 18px;border-radius:999px;border:none;background:linear-gradient(135deg,#a78bfa,#c4b5fd);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0;transition:transform 0.15s;}
         .adApplyBtnCard:hover{transform:translateY(-1px);}
         .adEmpty{padding:40px 20px;text-align:center;color:rgba(245,245,245,0.35);font-size:14px;}
         /* Application cards */
@@ -459,15 +489,23 @@ export default function ApplicantDashboard() {
         .adField input,.adField textarea{padding:0 14px;height:44px;border-radius:10px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.04);color:#f5f5f5;font-size:13.5px;outline:none;font-family:inherit;transition:border-color 0.2s;width:100%;box-sizing:border-box;}
         .adField textarea{height:auto;padding:11px 14px;resize:vertical;}
         .adField input::placeholder,.adField textarea::placeholder{color:rgba(245,245,245,0.22);}
-        .adField input:focus,.adField textarea:focus{border-color:rgba(255,107,74,0.5);box-shadow:0 0 0 3px rgba(255,107,74,0.1);}
-        .adSubmitBtn{height:50px;border-radius:999px;border:none;background:linear-gradient(135deg,#ff6b4a,#f7b733);color:#fff;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;transition:transform 0.2s,opacity 0.2s;}
+        .adField input:focus,.adField textarea:focus{border-color:rgba(167,139,250,0.5);box-shadow:0 0 0 3px rgba(167,139,250,0.1);}
+        .adResumeSection{display:flex;flex-direction:column;gap:10px;padding:16px;background:rgba(167,139,250,0.04);border:1px solid rgba(167,139,250,0.15);border-radius:12px;}
+        .adResumeLabel{margin:0;font-size:12.5px;font-weight:700;color:rgba(245,245,245,0.65);}
+        .adResumeLink{font-size:13px;font-weight:600;color:#a78bfa;text-decoration:none;}
+        .adResumeLink:hover{color:#c4b5fd;}
+        .adResumeUpload{display:flex;align-items:center;gap:14px;cursor:pointer;}
+        .adResumeBtn{height:38px;padding:0 18px;border-radius:999px;border:1px solid rgba(167,139,250,0.3);background:rgba(167,139,250,0.08);color:#a78bfa;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s;white-space:nowrap;}
+        .adResumeBtn:hover{background:rgba(167,139,250,0.15);}
+        .adResumeHint{font-size:11.5px;color:rgba(245,245,245,0.3);}
+        .adSubmitBtn{height:50px;border-radius:999px;border:none;background:linear-gradient(135deg,#a78bfa,#c4b5fd);color:#fff;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;transition:transform 0.2s,opacity 0.2s;}
         .adSubmitBtn:hover:not(:disabled){transform:translateY(-2px);}.adSubmitBtn:disabled{opacity:0.6;cursor:not-allowed;}
         /* Modal */
         .adOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;}
         .adModal{background:rgba(12,16,28,0.99);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:28px;max-width:460px;width:100%;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,0.6);}
         .adModalTitle{margin:0;font-size:18px;font-weight:900;color:#f5f5f5;}.adModalSub{margin:-8px 0 0;font-size:13px;color:rgba(245,245,245,0.45);}
         .adModalActions{display:flex;gap:10px;}
-        .adApplyBtn{flex:1;height:46px;border-radius:999px;border:none;background:linear-gradient(135deg,#ff6b4a,#f7b733);color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;transition:opacity 0.2s;}
+        .adApplyBtn{flex:1;height:46px;border-radius:999px;border:none;background:linear-gradient(135deg,#a78bfa,#c4b5fd);color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;transition:opacity 0.2s;}
         .adApplyBtn:disabled{opacity:0.6;cursor:not-allowed;}
         .adCancelBtn{height:46px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(245,245,245,0.6);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
         @media(max-width:768px){.adPage{flex-direction:column;}.adSidebar{width:100%;height:auto;position:static;padding:12px;}.adNav{flex-direction:row;flex-wrap:wrap;}.adContent{padding:20px 16px;}.adStats{grid-template-columns:1fr 1fr;}.adFormRow{grid-template-columns:1fr;}}
