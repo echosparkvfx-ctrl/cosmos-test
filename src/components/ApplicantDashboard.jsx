@@ -21,6 +21,7 @@ export default function ApplicantDashboard() {
   const [coverLetter,  setCoverLetter] = React.useState("");
   const [profileForm,  setProfileForm] = React.useState({ full_name:"", bio:"", skills:"" });
   const [savingProfile,setSavingProfile]= React.useState(false);
+  const [submitting,   setSubmitting]  = React.useState(false);
   const userRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -68,13 +69,23 @@ export default function ApplicantDashboard() {
   const applyToJob = async (jobId) => {
     const alreadyApplied = applications.find(a => a.job_id===jobId);
     if (alreadyApplied) { showToast("Already applied to this job."); return; }
+    setSubmitting(true);
     const { error } = await supabase.from("applications").insert({
       job_id:jobId, applicant_id:user.id,
       cover_letter:coverLetter, status:"applied",
     });
+    setSubmitting(false);
     if (error) { showToast("Error: "+error.message); return; }
     showToast("✅ Application submitted!");
     setCoverLetter(""); setApplying(null);
+    await fetchApplications(user.id);
+  };
+
+  const withdrawApplication = async (appId) => {
+    if (!window.confirm("Withdraw this application?")) return;
+    const { error } = await supabase.from("applications").delete().eq("id", appId);
+    if (error) { showToast("Error: "+error.message); return; }
+    showToast("Application withdrawn.");
     await fetchApplications(user.id);
   };
 
@@ -117,7 +128,9 @@ export default function ApplicantDashboard() {
                 value={coverLetter} onChange={e => setCoverLetter(e.target.value)} />
             </div>
             <div className="adModalActions">
-              <button className="adApplyBtn" onClick={() => applyToJob(applying.id)}>Submit Application</button>
+              <button className="adApplyBtn" onClick={() => applyToJob(applying.id)} disabled={submitting}>
+                {submitting ? "Submitting…" : "Submit Application"}
+              </button>
               <button className="adCancelBtn" onClick={() => setApplying(null)}>Cancel</button>
             </div>
           </div>
@@ -266,7 +279,12 @@ export default function ApplicantDashboard() {
                       {app.cover_letter && (
                         <p className="adAppCardCover">"{app.cover_letter.slice(0,140)}{app.cover_letter.length>140?"…":""}"</p>
                       )}
-                      <p className="adAppCardDate">Applied {app.created_at?.slice(0,10)}</p>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <p className="adAppCardDate" style={{margin:0}}>Applied {app.created_at?.slice(0,10)}</p>
+                        {(app.status==="applied" || app.status==="reviewed") && (
+                          <button className="adWithdrawBtn" onClick={() => withdrawApplication(app.id)}>Withdraw</button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -366,8 +384,11 @@ export default function ApplicantDashboard() {
         .adModal{background:rgba(15,19,32,0.99);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:32px 28px;max-width:460px;width:100%;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,0.6);}
         .adModalTitle{margin:0;font-size:18px;font-weight:900;color:#f5f5f5;}.adModalSub{margin:-8px 0 0;font-size:13px;color:rgba(245,245,245,0.45);}
         .adModalActions{display:flex;gap:10px;}
-        .adApplyBtn{flex:1;height:46px;border-radius:999px;border:none;background:linear-gradient(135deg,#ff6b4a,#f7b733);color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;}
+        .adApplyBtn{flex:1;height:46px;border-radius:999px;border:none;background:linear-gradient(135deg,#ff6b4a,#f7b733);color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;transition:opacity 0.2s;}
+        .adApplyBtn:disabled{opacity:0.6;cursor:not-allowed;}
         .adCancelBtn{height:46px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(245,245,245,0.6);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+        .adWithdrawBtn{height:28px;padding:0 12px;border-radius:999px;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.06);color:#f87171;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s;}
+        .adWithdrawBtn:hover{background:rgba(239,68,68,0.14);}
         @media(max-width:768px){.adPage{flex-direction:column;}.adSidebar{width:100%;height:auto;position:static;padding:12px;}.adNav{flex-direction:row;flex-wrap:wrap;}.adContent{padding:20px 16px;}.adStats{grid-template-columns:1fr 1fr;}}
       `}</style>
     </>
