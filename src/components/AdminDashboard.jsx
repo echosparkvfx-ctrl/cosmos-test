@@ -291,7 +291,7 @@ export default function AdminDashboard() {
                   <tbody>
                     {users.map((u) => (
                       <tr key={u.email}>
-                        <td className="tdName">{u.name}</td>
+                        <td className="tdName">{u.full_name || u.email?.split("@")[0]}</td>
                         <td className="tdMuted">{u.email}</td>
                         <td><span className="rolePill" style={{ "--rc": roleColor[u.role] || "#f7b733" }}>{u.role}</span></td>
                         <td><span className="statusPill" style={{ "--sc": "#7ddfbb" }}>active</span></td>

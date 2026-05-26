@@ -1,4 +1,5 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import React from "react";
 
 import Navbar from "./Navbar.jsx";
 import Hero from "./Hero.jsx";
@@ -17,6 +18,7 @@ import ApplicantDashboard from "./ApplicantDashboard.jsx";
 import ApplicantProfile from "./ApplicantProfile.jsx";
 import RequestAccess from "./RequestAccess.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
+import ResetPassword from "./ResetPassword.jsx";
 import ScrollToHash from "./ScrollToHash.jsx";
 
 function Home() {
@@ -34,10 +36,19 @@ function Home() {
 
 export default function App() {
     const location = useLocation();
+    const navigate  = useNavigate();
+
+    // Detect Supabase password recovery redirect (hash contains type=recovery)
+    React.useEffect(() => {
+        const hash = window.location.hash;
+        if (hash.includes("type=recovery") || hash.includes("type=invite")) {
+            navigate("/reset-password", { replace: true });
+        }
+    }, []);
 
     // Dashboard pages get their own app navbar — hide site navbar & footer
     const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/profile");
-    const isAuth = location.pathname.startsWith("/login") || location.pathname.startsWith("/register") || location.pathname.startsWith("/request-access");
+    const isAuth = location.pathname.startsWith("/login") || location.pathname.startsWith("/register") || location.pathname.startsWith("/request-access") || location.pathname.startsWith("/reset-password");
 
     return (
         <>
@@ -55,6 +66,7 @@ export default function App() {
                 <Route path="/dashboard/admin" element={<AdminDashboard />} />
                 <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                 <Route path="/dashboard/vendor" element={<VendorDashboard />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
             </Routes>
             {!isDashboard && !isAuth && <Footer />}
         </>

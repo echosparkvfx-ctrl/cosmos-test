@@ -15,13 +15,28 @@ export default function Login() {
   const current   = ROLES[role] || ROLES.applicant;
   const activeRole = role || "applicant";
 
-  const [form,    setForm]    = React.useState({ email: "", password: "" });
-  const [loading, setLoading] = React.useState(false);
-  const [error,   setError]   = React.useState("");
+  const [form,       setForm]       = React.useState({ email: "", password: "" });
+  const [loading,    setLoading]    = React.useState(false);
+  const [error,      setError]      = React.useState("");
+  const [forgotMode, setForgotMode] = React.useState(false);
+  const [forgotEmail,setForgotEmail]= React.useState("");
+  const [forgotSent, setForgotSent] = React.useState(false);
+  const [forgotLoad, setForgotLoad] = React.useState(false);
 
   const handleChange = (e) => {
     setError("");
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setForgotLoad(true);
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoad(false);
+    if (resetErr) { setError(resetErr.message); return; }
+    setForgotSent(true);
   };
 
   const handleSubmit = async (e) => {
@@ -235,7 +250,41 @@ export default function Login() {
             </>
           )}
 
-          {/* form */}
+          {/* forgot password mode */}
+          {forgotMode ? (
+            forgotSent ? (
+              <div className="forgotSuccess">
+                <div style={{ fontSize: 40 }}>📧</div>
+                <p style={{ margin: 0, color: "#7ddfbb", fontWeight: 700 }}>Reset email sent!</p>
+                <p style={{ margin: 0, fontSize: 13, color: "rgba(245,245,245,0.5)" }}>
+                  Check your inbox and click the link to set a new password.
+                </p>
+                <button className="forgotBack" onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(""); }}>
+                  ← Back to Sign in
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgot} className="theForm">
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ margin: "0 0 4px", fontWeight: 800, color: "#f5f5f5", fontSize: 16 }}>Reset your password</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "rgba(245,245,245,0.45)" }}>Enter your email — we'll send a reset link.</p>
+                </div>
+                <div className="fGroup">
+                  <label>Email address</label>
+                  <input type="email" required placeholder="you@company.com"
+                    value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
+                </div>
+                {error && <div className="errBox">{error}</div>}
+                <button type="submit" className="submitBtn" disabled={forgotLoad} style={{ "--ac": current.accent }}>
+                  {forgotLoad ? <><span className="spinner"/>Sending…</> : "Send Reset Email"}
+                </button>
+                <button type="button" className="forgotBack" onClick={() => { setForgotMode(false); setError(""); }}>
+                  ← Back to Sign in
+                </button>
+              </form>
+            )
+          ) : (
+          /* login form */
           <form onSubmit={handleSubmit} className="theForm">
             <div className="fGroup">
               <label htmlFor="email">Email address</label>
@@ -245,7 +294,9 @@ export default function Login() {
             <div className="fGroup">
               <div className="fLabelRow">
                 <label htmlFor="password">Password</label>
-                <a href="#">Forgot password?</a>
+                <button type="button" className="forgotLink" onClick={() => { setForgotMode(true); setError(""); setForgotEmail(form.email); }}>
+                  Forgot password?
+                </button>
               </div>
               <input id="password" name="password" type="password" autoComplete="current-password" required
                 placeholder="••••••••" value={form.password} onChange={handleChange}/>
@@ -260,6 +311,7 @@ export default function Login() {
                 : `Sign in as ${current.label}`}
             </button>
           </form>
+          )}
 
           {/* footer link */}
           {activeRole === "applicant" && (
@@ -713,6 +765,43 @@ export default function Login() {
           padding: 3px 8px;
           border-radius: 6px;
           width: fit-content;
+        }
+
+        .forgotLink {
+          font-size: 12px;
+          color: #f7b733;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-weight: 600;
+          font-family: inherit;
+          padding: 0;
+          transition: color 0.15s;
+        }
+        .forgotLink:hover { color: #ff6b4a; }
+
+        .forgotBack {
+          width: 100%;
+          height: 40px;
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.03);
+          color: rgba(245,245,245,0.5);
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.15s;
+        }
+        .forgotBack:hover { background: rgba(255,255,255,0.07); color: #f5f5f5; }
+
+        .forgotSuccess {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 14px;
+          text-align: center;
+          padding: 16px 0;
         }
 
         .formFooter {
