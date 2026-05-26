@@ -17,6 +17,7 @@ export default function RecruiterDashboard() {
   const [jobs,         setJobs]        = React.useState([]);
   const [applications, setApplications]= React.useState([]);
   const [selectedJob,  setSelectedJob] = React.useState(null);
+  const selectedJobRef = React.useRef(null);
   const [loading,      setLoading]     = React.useState(true);
   const [toast,        setToast]       = React.useState("");
   const [jobForm,      setJobForm]     = React.useState({
@@ -31,7 +32,7 @@ export default function RecruiterDashboard() {
     const channel = supabase
       .channel("recruiter-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "applications" }, () => {
-        if (selectedJob) fetchApplications(selectedJob.id);
+        if (selectedJobRef.current) fetchApplications(selectedJobRef.current.id);
         showToast("🔔 New application received!");
       })
       .subscribe();
@@ -55,14 +56,17 @@ export default function RecruiterDashboard() {
   };
 
   const fetchApplications = async (jobId) => {
-    const { data } = await supabase.from("applications")
-      .select("*, profiles(full_name, email)")
-      .eq("job_id", jobId).order("created_at", { ascending:false });
-    setApplications(data || []);
+    const { data: apps } = await supabase.from("applications")
+      .select("*").eq("job_id", jobId).order("created_at", { ascending: false });
+    if (!apps || apps.length === 0) { setApplications([]); return; }
+    const ids = apps.map(a => a.applicant_id);
+    const { data: profs } = await supabase.from("profiles").select("id, full_name, email").in("id", ids);
+    const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
+    setApplications(apps.map(a => ({ ...a, profiles: profMap[a.applicant_id] || null })));
   };
 
   const openJob = async (job) => {
-    setSelectedJob(job); setTab("applicants");
+    setSelectedJob(job); selectedJobRef.current = job; setTab("applicants");
     await fetchApplications(job.id);
   };
 
