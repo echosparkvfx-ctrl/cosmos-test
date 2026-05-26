@@ -38,11 +38,11 @@ export default function App() {
     const location = useLocation();
     const navigate  = useNavigate();
 
-    // Detect Supabase password recovery redirect (hash contains type=recovery)
+    // Detect Supabase password recovery / invite redirect — preserve hash so Supabase can parse tokens
     React.useEffect(() => {
         const hash = window.location.hash;
         if (hash.includes("type=recovery") || hash.includes("type=invite")) {
-            navigate("/reset-password", { replace: true });
+            navigate("/reset-password" + hash, { replace: true });
         }
     }, []);
 

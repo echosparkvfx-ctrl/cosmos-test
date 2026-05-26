@@ -20,9 +20,27 @@ export default function ResetPassword() {
   const [loading,  setLoading]    = React.useState(false);
   const [error,    setError]      = React.useState("");
   const [done,     setDone]       = React.useState(false);
+  const [ready,    setReady]      = React.useState(false);
+
+  // Wait for Supabase to parse the hash and establish a session
+  React.useEffect(() => {
+    // Check if session already exists (e.g. page refresh)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) { setReady(true); return; }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        setReady(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!ready) { setError("Auth session missing! Please click the link in your email again."); return; }
     if (password !== confirm) { setError("Passwords do not match."); return; }
     if (password.length < 6)  { setError("Password must be at least 6 characters."); return; }
     setLoading(true); setError("");
@@ -30,7 +48,6 @@ export default function ResetPassword() {
       const { error: upErr } = await supabase.auth.updateUser({ password });
       if (upErr) { setError(upErr.message); setLoading(false); return; }
       setDone(true);
-      // Redirect to correct dashboard after 2s
       const destination = await getRoleDashboard();
       setTimeout(() => navigate(destination), 2000);
     } catch {
@@ -87,7 +104,10 @@ export default function ResetPassword() {
 
               {error && <div className="rpError">{error}</div>}
 
-              <button type="submit" className="rpSubmit" disabled={loading}>
+              {!ready && (
+                <div className="rpWaiting">⏳ Verifying your link…</div>
+              )}
+              <button type="submit" className="rpSubmit" disabled={loading || !ready}>
                 {loading ? "Saving…" : "Set Password & Login"}
               </button>
             </form>
@@ -254,6 +274,17 @@ export default function ResetPassword() {
         }
 
         .rpSubmit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .rpWaiting {
+          padding: 10px 14px;
+          border-radius: 10px;
+          background: rgba(19,184,200,0.08);
+          border: 1px solid rgba(19,184,200,0.2);
+          color: rgba(19,184,200,0.9);
+          font-size: 13px;
+          font-weight: 600;
+          text-align: center;
+        }
 
         .rpSuccess {
           display: flex;
